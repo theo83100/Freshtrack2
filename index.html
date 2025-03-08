@@ -15,6 +15,1087 @@
             --dark: #2c3e50;
         }
 
+        // Événements
+
+        // Soumission du formulaire d'ajout/modification de produit
+        productForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('productName').value;
+            const category = document.getElementById('productCategory').value;
+            const quantity = document.getElementById('productQuantity').value;
+            const shelfLife = parseInt(document.getElementById('customShelfLife').value);
+
+            if (currentProductId) {
+                // Mode édition
+                const expiration = calculateExpirationDateTime(shelfLife);
+                updateProduct(currentProductId, {
+                    name,
+                    category,
+                    quantity,
+                    expirationDate: expiration.date,
+                    expirationTime: expiration.time
+                });
+
+        // Événement de changement de tri
+        sortBy.addEventListener('change', updateProductsTable);
+
+        // Ajouter une synchronisation automatique périodique (toutes les 5 minutes)
+        setInterval(() => {
+            if (currentUser) {
+                saveToFirebase();
+            }
+        }, 5 * 60 * 1000);
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // L'authentification s'occupe de charger les données
+            // Voir auth.onAuthStateChanged plus haut
+
+            // Gestion des erreurs et logging
+            window.addEventListener('error', function(e) {
+                console.error('Erreur globale:', e.message);
+                showNotification('Une erreur est survenue: ' + e.message);
+                return false;
+            });
+
+            // Initialiser le minuteur pour mettre à jour les countdowns chaque minute
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            countdownInterval = setInterval(updateAllCountdowns, 60 * 1000); // Toutes les minutes
+            
+            // Mettre à jour les countdowns immédiatement
+            updateAllCountdowns();
+
+            // Vérification périodique de l'état de connexion
+            setInterval(() => {
+                if (navigator.onLine && currentUser) {
+                    const lastSyncTime = localStorage.getItem('lastSyncTime') || 0;
+                    const now = Date.now();
+
+                    // Si la dernière synchronisation date de plus de 10 minutes
+                    if (now - lastSyncTime > 10 * 60 * 1000) {
+                        saveToFirebase().then(() => {
+                            localStorage.setItem('lastSyncTime', now);
+                        });
+                    }
+                }
+            }, 60 * 1000); // Vérifie chaque minute
+        });
+
+        // Gestion des événements hors ligne/en ligne
+        window.addEventListener('online', () => {
+            if (currentUser) {
+                showNotification('Connexion rétablie. Synchronisation...');
+                saveToFirebase();
+            }
+        });
+
+        window.addEventListener('offline', () => {
+            showNotification('Vous êtes hors ligne. Les modifications seront synchronisées lors de la reconnexion.');
+        });
+
+        // Vérifier l'état initial de la connexion
+        if (!navigator.onLine) {
+            showNotification('Vous êtes hors ligne. Mode local activé.');
+        }
+    </script>
+</body>
+</html>
+
+        // Confirmation de suppression
+        confirmDeleteBtn.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+
+            if (type === 'product') {
+                // Suppression d'un produit
+                const id = parseInt(this.getAttribute('data-id'));
+                deleteProduct(id);
+                showNotification('Produit supprimé avec succès !');
+            } else if (type === 'preset') {
+                // Suppression d'un aliment préenregistré
+                const id = parseInt(this.getAttribute('data-id'));
+                deletePreset(id);
+                showNotification('Aliment préenregistré supprimé avec succès !');
+            } else if (type === 'category') {
+                // Suppression d'une catégorie
+                const categoryName = this.getAttribute('data-category');
+                updateCategories('delete', categoryName, null);
+                showNotification('Catégorie supprimée avec succès !');
+            }
+
+            closeDeleteModal();
+        });
+        
+        // Bouton d'exportation des données
+        exportBtn.addEventListener('click', function() {
+            exportData();
+        });
+
+        // Événements de boutons d'ajout
+        addProductBtn.addEventListener('click', () => openProductModal());
+        addPresetBtn.addEventListener('click', () => openPresetModal());
+
+        // Événements de boutons d'annulation
+        cancelBtn.addEventListener('click', closeProductModal);
+        cancelPresetBtn.addEventListener('click', closePresetModal);
+        cancelCategoryBtn.addEventListener('click', closeCategoryModal);
+        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+        // Fermeture des modales avec le X
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal === productModal) closeProductModal();
+                else if (modal === presetModal) closePresetModal();
+                else if (modal === categoryModal) closeCategoryModal();
+                else if (modal === deleteModal) closeDeleteModal();
+                else if (modal === authModal) {
+                    // Ne pas fermer le modal d'authentification si l'utilisateur n'est pas connecté
+                    if (currentUser) {
+                        closeAuthModal();
+                    }
+                }
+            });
+        });
+
+        // Événement de changement d'onglet
+        tabButtons.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Supprimer la classe active de tous les onglets
+                tabButtons.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(t => t.classList.remove('active'));
+
+                // Ajouter la classe active à l'onglet cliqué
+                this.classList.add('active');
+
+                // Afficher le contenu correspondant
+                const tabId = this.getAttribute('data-tab');
+                if (tabId === 'presets') {
+                    document.getElementById('presets-tab').classList.add('active');
+                } else if (tabId === 'manual') {
+                    document.getElementById('manual-tab').classList.add('active');
+                }
+            });
+        });
+                showNotification('Produit modifié avec succès !');
+            } else {
+                // Mode ajout
+                addProduct(name, category, quantity, shelfLife);
+                showNotification('Produit ajouté avec succès !');
+            }
+
+            closeProductModal();
+        });
+
+        // Soumission du formulaire d'ajout/modification d'aliment préenregistré
+        presetForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('presetName').value;
+            const category = document.getElementById('presetCategory').value;
+            const quantity = document.getElementById('presetQuantity').value;
+            const shelfLife = parseInt(document.getElementById('presetShelfLife').value);
+
+            if (currentPresetId) {
+                // Mode édition
+                updatePreset(currentPresetId, {
+                    name,
+                    category,
+                    quantity,
+                    shelfLife
+                });
+                showNotification('Aliment préenregistré modifié avec succès !');
+            } else {
+                // Mode ajout
+                addPreset(name, category, quantity, shelfLife);
+                showNotification('Aliment préenregistré ajouté !');
+            }
+
+            closePresetModal();
+        });
+
+        // Soumission du formulaire de modification de catégorie
+        categoryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const oldCategoryName = document.getElementById('oldCategoryName').value;
+            const newCategoryName = document.getElementById('categoryName').value;
+
+            if (oldCategoryName && newCategoryName && oldCategoryName !== newCategoryName) {
+                // Vérifier si la nouvelle catégorie existe déjà
+                if (categories.includes(newCategoryName)) {
+                    showNotification('Cette catégorie existe déjà !');
+                    return;
+                }
+
+                updateCategories('update', oldCategoryName, newCategoryName);
+                showNotification('Catégorie modifiée avec succès !');
+            }
+
+            closeCategoryModal();
+        });
+
+        // Ajout de nouvelle catégorie
+        addCategoryBtn.addEventListener('click', function() {
+            const newCategory = newCategoryInput.value.trim();
+
+            if (newCategory) {
+                // Vérifier si la catégorie existe déjà
+                if (categories.includes(newCategory)) {
+                    showNotification('Cette catégorie existe déjà !');
+                } else {
+                    // Ajouter la nouvelle catégorie
+                    updateCategories('add', null, newCategory);
+                    newCategoryInput.value = '';
+                    showNotification('Catégorie ajoutée avec succès !');
+                }
+            }
+        });
+
+        // Fonction pour ajouter les événements aux aliments préenregistrés
+        function addPresetEventListeners() {
+            // Clic sur l'aliment pour l'ajouter au stock
+            document.querySelectorAll('.preset-food-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // Ne pas exécuter si on a cliqué sur un bouton
+                    if (e.target.closest('.emoji-controls')) {
+                        return;
+                    }
+
+                    const preset = {
+                        id: parseInt(this.getAttribute('data-id')),
+                        name: this.getAttribute('data-name'),
+                        category: this.getAttribute('data-category'),
+                        quantity: this.getAttribute('data-quantity'),
+                        shelfLife: parseInt(this.getAttribute('data-shelf-life'))
+                    };
+
+                    addPresetFoodToStock(preset);
+                });
+            });
+
+            // Boutons de modification des aliments préenregistrés
+            document.querySelectorAll('.edit-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Empêcher l'ajout au stock
+                    const presetItem = this.closest('.preset-food-item');
+                    const presetId = parseInt(presetItem.getAttribute('data-id'));
+                    openPresetModal(true, presetId);
+                });
+            });
+
+            // Boutons de suppression des aliments préenregistrés
+            document.querySelectorAll('.delete-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Empêcher l'ajout au stock
+                    const presetItem = this.closest('.preset-food-item');
+                    const presetId = parseInt(presetItem.getAttribute('data-id'));
+                    const presetName = presetItem.getAttribute('data-name');
+                    openDeleteModal('preset', presetId, presetName);
+                });
+            });
+
+            // Boutons de modification de catégorie
+            document.querySelectorAll('.edit-category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    openCategoryModal(category);
+                });
+            });
+
+            // Boutons de suppression de catégorie
+            document.querySelectorAll('.delete-category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    openDeleteModal('category', null, category);
+                });
+            });
+        }
+
+        // Fonction pour ajouter un aliment préenregistré au stock
+        function addPresetFoodToStock(preset) {
+            const expiration = calculateExpirationDateTime(preset.shelfLife);
+
+            const newProduct = {
+                id: nextProductId++,
+                name: preset.name,
+                category: preset.category,
+                quantity: preset.quantity,
+                expirationDate: expiration.date,
+                expirationTime: expiration.time,
+                status: 'ok'
+            };
+
+            products.push(newProduct);
+            updateProductsTable();
+            showNotification(`${preset.name} ajouté au stock !`);
+            saveToFirebase();
+        }
+
+        function updatePresetsDisplay() {
+            const presetsContainer = document.getElementById('presetsContainer');
+            presetsContainer.innerHTML = '';
+
+            // Regrouper par catégorie
+            let presetsByCategory = {};
+            presetFoods.forEach(preset => {
+                if (!presetsByCategory[preset.category]) {
+                    presetsByCategory[preset.category] = [];
+                }
+                presetsByCategory[preset.category].push(preset);
+            });
+
+            // Générer le HTML pour chaque catégorie
+            for (const category in presetsByCategory) {
+                // Trier les aliments par ordre alphabétique pour cette catégorie
+                presetsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+                
+                const categoryDiv = document.createElement('div');
+                categoryDiv.innerHTML = `
+                    <h4 class="category-header">
+                        ${category}
+                        <div class="category-controls">
+                            <span class="emoji-btn edit-category-btn" data-category="${category}">✏️</span>
+                            <span class="emoji-btn delete-category-btn" data-category="${category}">🗑️</span>
+                        </div>
+                    </h4>
+                    <div class="preset-foods" data-category="${category}"></div>
+                `;
+
+                const presetFoodsContainer = categoryDiv.querySelector('.preset-foods');
+
+                presetsByCategory[category].forEach(preset => {
+                    const presetItem = document.createElement('div');
+                    presetItem.className = 'preset-food-item';
+                    presetItem.setAttribute('data-id', preset.id);
+                    presetItem.setAttribute('data-name', preset.name);
+                    presetItem.setAttribute('data-category', preset.category);
+                    presetItem.setAttribute('data-quantity', preset.quantity);
+                    presetItem.setAttribute('data-shelf-life', preset.shelfLife);
+
+                    presetItem.innerHTML = `
+                        <div class="emoji-controls">
+                            <span class="emoji-btn edit-preset-btn">✏️</span>
+                            <span class="emoji-btn delete-preset-btn">🗑️</span>
+                        </div>
+                        ${preset.name}
+                    `;
+
+                    presetFoodsContainer.appendChild(presetItem);
+                });
+
+                presetsContainer.appendChild(categoryDiv);
+            }
+
+            // Ajouter les événements
+            addPresetEventListeners();
+        }
+
+        function updateProductsTable() {
+            const tbody = document.getElementById('productsTable');
+            tbody.innerHTML = '';
+
+            let sortedProducts = [...products];
+
+            // Appliquer le tri
+            switch(sortBy.value) {
+                case 'expiration':
+                    sortedProducts.sort((a, b) => {
+                        const dateA = new Date(`${a.expirationDate}T${a.expirationTime}`);
+                        const dateB = new Date(`${b.expirationDate}T${b.expirationTime}`);
+                        return dateA - dateB;
+                    });
+                    break;
+                case 'name':
+                    sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'category':
+                    sortedProducts.sort((a, b) => a.category.localeCompare(b.category));
+                    break;
+                case 'quantity':
+                    sortedProducts.sort((a, b) => a.quantity.localeCompare(b.quantity));
+                    break;
+            }
+
+            // Mettre à jour le tableau
+            sortedProducts.forEach(product => {
+                // Vérifier le statut actuel basé sur la date et l'heure
+                product.status = determineStatus(product.expirationDate, product.expirationTime);
+
+                // Calculer le temps restant pour l'affichage
+                const now = new Date();
+                const expiration = new Date(`${product.expirationDate}T${product.expirationTime}`);
+                const diffHours = (expiration - now) / (1000 * 60 * 60);
+                const timeRemainingText = formatTimeRemaining(diffHours);
+                const timeRemainingClass = getTimeRemainingClass(diffHours);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.category}</td>
+                    <td>${product.quantity}</td>
+                    <td>${formatDateTime(product.expirationDate, product.expirationTime)}</td>
+                    <td class="time-remaining ${timeRemainingClass}" id="countdown-${product.id}">${timeRemainingText}</td>
+                    <td><span class="status ${getStatusClass(product.status)}">${getStatusText(product.status)}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-primary edit-btn" data-id="${product.id}">Modifier</button>
+                        <button class="btn btn-danger delete-btn" data-id="${product.id}" data-name="${product.name}">Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Mettre à jour les statistiques
+            document.querySelector('.stats .stat-card:nth-child(1) .value').textContent = products.length;
+            document.querySelector('.stats .stat-card:nth-child(2) .value').textContent = products.filter(p => p.status === 'warning').length;
+            document.querySelector('.stats .stat-card:nth-child(3) .value').textContent = products.filter(p => p.status === 'expired').length;
+            document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
+
+            // Ajouter les événements aux boutons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = parseInt(this.getAttribute('data-id'));
+                    openProductModal(true, productId);
+                });
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = parseInt(this.getAttribute('data-id'));
+                    const productName = this.getAttribute('data-name');
+                    openDeleteModal('product', productId, productName);
+                });
+            });
+        }
+
+        function determineStatus(expirationDate, expirationTime) {
+            const now = new Date();
+            const expiration = new Date(`${expirationDate}T${expirationTime}`);
+
+            // Calcul de la différence en heures
+            const diffHours = (expiration - now) / (1000 * 60 * 60);
+
+            if (diffHours < 0) {
+                return 'expired';
+            } else if (diffHours < 3) { // Modification: Alerte à 3 heures restantes
+                return 'warning';
+            } else {
+                return 'ok';
+            }
+        }
+
+        function formatDateTime(date, time) {
+            const [year, month, day] = date.split('-');
+            return `${day}/${month}/${year} ${time}`;
+        }
+
+        function calculateExpirationDateTime(shelfLifeHours) {
+            const now = new Date();
+            const expiration = new Date(now.getTime() + shelfLifeHours * 60 * 60 * 1000);
+
+            const year = expiration.getFullYear();
+            const month = String(expiration.getMonth() + 1).padStart(2, '0');
+            const day = String(expiration.getDate()).padStart(2, '0');
+            const hours = String(expiration.getHours()).padStart(2, '0');
+            const minutes = String(expiration.getMinutes()).padStart(2, '0');
+
+            return {
+                date: `${year}-${month}-${day}`,
+                time: `${hours}:${minutes}`
+            };
+        }
+
+        // Mettre à jour les options de catégories dans les sélecteurs
+        function updateCategoryOptions(selectElement) {
+            // Sauvegarder la valeur actuelle
+            const currentValue = selectElement.value;
+
+            // Vider les options existantes
+            selectElement.innerHTML = '';
+
+            // Ajouter les nouvelles options
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                selectElement.appendChild(option);
+            });
+
+            // Restaurer la valeur si elle existe dans les nouvelles options
+            if (categories.includes(currentValue)) {
+                selectElement.value = currentValue;
+            }
+        }
+
+        function openCategoryModal(category = null) {
+            categoryModalTitle.textContent = category ? 'Modifier une catégorie' : 'Ajouter une catégorie';
+            currentCategory = category;
+
+            if (category) {
+                document.getElementById('oldCategoryName').value = category;
+                document.getElementById('categoryName').value = category;
+            } else {
+                categoryForm.reset();
+                document.getElementById('oldCategoryName').value = '';
+            }
+
+            categoryModal.style.display = 'block';
+        }
+
+        function closeCategoryModal() {
+            categoryModal.style.display = 'none';
+            categoryForm.reset();
+            currentCategory = null;
+        }
+
+        function openDeleteModal(type, id, name) {
+            confirmDeleteBtn.setAttribute('data-type', type);
+
+            if (type === 'product') {
+                confirmDeleteBtn.setAttribute('data-id', id);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer le produit "${name}" ?`;
+            } else if (type === 'preset') {
+                confirmDeleteBtn.setAttribute('data-id', id);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer l'aliment préenregistré "${name}" ?`;
+            } else if (type === 'category') {
+                confirmDeleteBtn.setAttribute('data-category', name);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer la catégorie "${name}" et tous ses aliments ?`;
+            }
+
+            deleteModal.style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            deleteModal.style.display = 'none';
+            confirmDeleteBtn.removeAttribute('data-id');
+            confirmDeleteBtn.removeAttribute('data-category');
+        }
+
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'ok': return 'status-ok';
+                case 'warning': return 'status-warning';
+                case 'expired': return 'status-expired';
+                default: return 'status-ok';
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'ok': return 'Consommable';
+                case 'warning': return 'Bientôt périmé';
+                case 'expired': return 'Périmé';
+                default: return 'Consommable';
+            }
+        }
+
+        // Fonctions
+        function openProductModal(isEdit = false, productId = null) {
+            modalTitle.textContent = isEdit ? 'Modifier le produit' : 'Ajouter un produit';
+            currentProductId = productId;
+
+            // Mettre à jour les options de catégories
+            updateCategoryOptions(document.getElementById('productCategory'));
+
+            if (isEdit && productId) {
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                    document.getElementById('productName').value = product.name;
+                    document.getElementById('productCategory').value = product.category;
+                    document.getElementById('productQuantity').value = product.quantity;
+
+                    // Calculer la durée restante en heures
+                    const now = new Date();
+                    const expiration = new Date(`${product.expirationDate}T${product.expirationTime}`);
+                    const diffHours = Math.round((expiration - now) / (1000 * 60 * 60));
+
+                    document.getElementById('customShelfLife').value = diffHours > 0 ? diffHours : 1;
+                }
+            } else {
+                productForm.reset();
+                document.getElementById('customShelfLife').value = 24; // Valeur par défaut : 24 heures
+            }
+
+            productModal.style.display = 'block';
+        }
+
+        function closeProductModal() {
+            productModal.style.display = 'none';
+            productForm.reset();
+            currentProductId = null;
+        }
+
+        function openPresetModal(isEdit = false, presetId = null) {
+            presetModalTitle.textContent = isEdit ? 'Modifier l\'aliment préenregistré' : 'Ajouter un aliment préenregistré';
+            document.getElementById('savePresetBtn').textContent = isEdit ? 'Enregistrer' : 'Ajouter';
+            currentPresetId = presetId;
+
+            // Mettre à jour les options de catégories
+            updateCategoryOptions(document.getElementById('presetCategory'));
+
+            if (isEdit && presetId) {
+                const preset = presetFoods.find(p => p.id === presetId);
+                if (preset) {
+                    document.getElementById('presetId').value = preset.id;
+                    document.getElementById('presetName').value = preset.name;
+                    document.getElementById('presetCategory').value = preset.category;
+                    document.getElementById('presetQuantity').value = preset.quantity;
+                    document.getElementById('presetShelfLife').value = preset.shelfLife;
+                }
+            } else {
+                presetForm.reset();
+                document.getElementById('presetId').value = '';
+                document.getElementById('presetShelfLife').value = 24; // Valeur par défaut : 24 heures
+            }
+
+            presetModal.style.display = 'block';
+        }
+
+        function closePresetModal() {
+            presetModal.style.display = 'none';
+            presetForm.reset();
+            currentPresetId = null;
+        }
+
+        // Modifier la fonction pour ajouter un preset
+        function addPreset(name, category, quantity, shelfLife) {
+            const newPreset = {
+                id: nextPresetId++,
+                name,
+                category,
+                quantity,
+                shelfLife
+            };
+            
+            presetFoods.push(newPreset);
+            updatePresetsDisplay();
+            saveToFirebase();
+            
+            return newPreset;
+        }
+
+        // Modifier la fonction pour mettre à jour un preset
+        function updatePreset(presetId, updatedData) {
+            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
+            
+            if (presetIndex !== -1) {
+                presetFoods[presetIndex] = {
+                    ...presetFoods[presetIndex],
+                    ...updatedData
+                };
+                
+                updatePresetsDisplay();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour supprimer un preset
+        function deletePreset(presetId) {
+            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
+            
+            if (presetIndex !== -1) {
+                presetFoods.splice(presetIndex, 1);
+                updatePresetsDisplay();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour ajouter/modifier/supprimer une catégorie
+        function updateCategories(action, oldCategory, newCategory) {
+            if (action === 'add' && newCategory) {
+                categories.push(newCategory);
+            } else if (action === 'update' && oldCategory && newCategory) {
+                const index = categories.indexOf(oldCategory);
+                if (index !== -1) {
+                    categories[index] = newCategory;
+                    
+                    // Mettre à jour la catégorie dans les aliments préenregistrés
+                    presetFoods.forEach(preset => {
+                        if (preset.category === oldCategory) {
+                            preset.category = newCategory;
+                        }
+                    });
+                    
+                    // Mettre à jour la catégorie dans les produits
+                    products.forEach(product => {
+                        if (product.category === oldCategory) {
+                            product.category = newCategory;
+                        }
+                    });
+                }
+            } else if (action === 'delete' && oldCategory) {
+                const index = categories.indexOf(oldCategory);
+                if (index !== -1) {
+                    categories.splice(index, 1);
+                    
+                    // Supprimer les aliments préenregistrés de cette catégorie
+                    presetFoods = presetFoods.filter(p => p.category !== oldCategory);
+                }
+            }
+            
+            updatePresetsDisplay();
+            updateProductsTable();
+            updateCategoryOptions(document.getElementById('productCategory'));
+            updateCategoryOptions(document.getElementById('presetCategory'));
+            saveToFirebase();
+        }
+        
+        // Afficher/masquer le spinner de chargement
+        function showLoader() {
+            loader.style.display = 'block';
+        }
+        
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
+
+        // Remplacer la fonction showStorageIndicator pour indiquer la synchronisation
+        function showStorageIndicator(message, isError = false) {
+            storageIndicator.textContent = message;
+            storageIndicator.classList.add('show');
+            
+            if (isError) {
+                storageIndicator.style.backgroundColor = 'rgba(231, 76, 60, 0.9)';
+            } else {
+                storageIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            }
+            
+            setTimeout(() => {
+                storageIndicator.classList.remove('show');
+            }, 2000);
+        }
+
+        // Fonction pour exporter les données
+        function exportData() {
+            if (!currentUser) {
+                showNotification('Veuillez vous connecter pour exporter les données.');
+                return;
+            }
+            
+            const data = {
+                products: products,
+                presetFoods: presetFoods,
+                categories: categories
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `freshtrack_export_${currentUser.uid}.json`);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+        
+        // Fonctions CRUD pour les produits
+        function addProduct(name, category, quantity, shelfLife) {
+            const expiration = calculateExpirationDateTime(shelfLife);
+            
+            const newProduct = {
+                id: nextProductId++,
+                name,
+                category,
+                quantity,
+                expirationDate: expiration.date,
+                expirationTime: expiration.time,
+                status: 'ok'
+            };
+            
+            products.push(newProduct);
+            updateProductsTable();
+            saveToFirebase();
+            
+            return newProduct;
+        }
+
+        // Modifier la fonction pour mettre à jour un produit
+        function updateProduct(productId, updatedData) {
+            const productIndex = products.findIndex(p => p.id === productId);
+            
+            if (productIndex !== -1) {
+                products[productIndex] = {
+                    ...products[productIndex],
+                    ...updatedData
+                };
+                
+                updateProductsTable();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour supprimer un produit
+        function deleteProduct(productId) {
+            const productIndex = products.findIndex(p => p.id === productId);
+            
+            if (productIndex !== -1) {
+                products.splice(productIndex, 1);
+                updateProductsTable();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Fonctions de chargement/sauvegarde Firebase
+        async function loadDataFromFirebase() {
+            if (!currentUser) return;
+            
+            try {
+                showLoader();
+                
+                // Charger les configurations (catégories et compteurs)
+                const settingsDoc = await settingsCollection.doc(currentUser.uid).get();
+                if (settingsDoc.exists) {
+                    const settingsData = settingsDoc.data();
+                    categories = settingsData.categories || [];
+                    nextProductId = settingsData.nextProductId || 1;
+                    nextPresetId = settingsData.nextPresetId || 1;
+                }
+                
+                // Charger les produits
+                const productSnapshot = await productsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                products = [];
+                productSnapshot.forEach(doc => {
+                    products.push(doc.data());
+                });
+                
+                // Charger les aliments préenregistrés
+                const presetSnapshot = await presetsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                presetFoods = [];
+                presetSnapshot.forEach(doc => {
+                    presetFoods.push(doc.data());
+                });
+                
+                // Mettre à jour l'interface
+                updateProductsTable();
+                updatePresetsDisplay();
+                updateCategoryOptions(document.getElementById('productCategory'));
+                updateCategoryOptions(document.getElementById('presetCategory'));
+                
+                // Démarrer la mise à jour des minuteurs
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                }
+                countdownInterval = setInterval(updateAllCountdowns, 60 * 1000);
+                updateAllCountdowns(); // Mise à jour immédiate
+                
+                hideLoader();
+                showStorageIndicator('Données chargées avec succès');
+            } catch (error) {
+                console.error("Erreur lors du chargement des données :", error);
+                hideLoader();
+                showNotification('Erreur lors du chargement des données !');
+            }
+        }
+
+        // Enregistrer les données dans Firebase
+        async function saveToFirebase() {
+            if (!currentUser) return;
+            
+            try {
+                showStorageIndicator('Synchronisation en cours...');
+                
+                // Mettre à jour les paramètres
+                await settingsCollection.doc(currentUser.uid).set({
+                    categories: categories,
+                    nextProductId: nextProductId,
+                    nextPresetId: nextPresetId
+                });
+                
+                // Mettre à jour/ajouter les produits
+                const batch = db.batch();
+                
+                // Obtenir les ID existants pour savoir lesquels supprimer après
+                const productSnapshot = await productsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                const existingProductIds = new Set();
+                productSnapshot.forEach(doc => {
+                    existingProductIds.add(doc.id);
+                });
+                
+                // Préparer les mises à jour et nouvelles entrées
+                for (const product of products) {
+                    const productId = `product_${product.id}`;
+                    const productRef = productsCollection.doc(productId);
+                    batch.set(productRef, {
+                        ...product,
+                        userId: currentUser.uid
+                    });
+                    existingProductIds.delete(productId);
+                }
+                
+                // Supprimer les produits qui n'existent plus
+                for (const oldId of existingProductIds) {
+                    if (oldId.startsWith('product_')) {
+                        batch.delete(productsCollection.doc(oldId));
+                    }
+                }
+                
+                // Exécuter le premier batch (produits)
+                await batch.commit();
+                
+                // Préparer un nouveau batch pour les presets
+                const batchPresets = db.batch();
+                
+                // Obtenir les ID de presets existants
+                const presetSnapshot = await presetsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                const existingPresetIds = new Set();
+                presetSnapshot.forEach(doc => {
+                    existingPresetIds.add(doc.id);
+                });
+                
+                // Préparer les mises à jour et nouvelles entrées pour les presets
+                for (const preset of presetFoods) {
+                    const presetId = `preset_${preset.id}`;
+                    const presetRef = presetsCollection.doc(presetId);
+                    batchPresets.set(presetRef, {
+                        ...preset,
+                        userId: currentUser.uid
+                    });
+                    existingPresetIds.delete(presetId);
+                }
+                
+                // Supprimer les presets qui n'existent plus
+                for (const oldId of existingPresetIds) {
+                    if (oldId.startsWith('preset_')) {
+                        batchPresets.delete(presetsCollection.doc(oldId));
+                    }
+                }
+                
+                // Exécuter le deuxième batch (presets)
+                await batchPresets.commit();
+                
+                showStorageIndicator('Données synchronisées !');
+                return true;
+            } catch (error) {
+                console.error("Erreur lors de la sauvegarde des données :", error);
+                showStorageIndicator('Erreur de synchronisation !', true);
+                return false;
+            }
+        }
+
+        // Ajouter un bouton de déconnexion dans la navigation
+        function addLogoutButton() {
+            const nav = document.querySelector('nav');
+            
+            // Vérifier si le bouton existe déjà
+            if (!document.getElementById('logoutBtn')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logoutBtn';
+                logoutBtn.className = 'btn';
+                logoutBtn.textContent = 'Déconnexion';
+                logoutBtn.addEventListener('click', signOut);
+                
+                nav.appendChild(logoutBtn);
+            }
+            
+            // Mettre à jour l'info utilisateur
+            if (currentUser && currentUser.email) {
+                userInfo.textContent = currentUser.email;
+            }
+        }
+
+        // Observer les changements d'état d'authentification
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // Utilisateur connecté
+                currentUser = user;
+                addLogoutButton();
+                loadDataFromFirebase();
+            } else {
+                // Utilisateur déconnecté
+                currentUser = null;
+                showAuthModal();
+            }
+        });
+
+        // Initialiser les données par défaut pour un nouvel utilisateur
+        async function initializeUserData() {
+            if (!currentUser) return;
+            
+            try {
+                showLoader();
+                // Créer un document de configuration avec l'ID de l'utilisateur
+                await settingsCollection.doc(currentUser.uid).set({
+                    categories: ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"],
+                    nextProductId: 1,
+                    nextPresetId: 1
+                });
+                
+                // Mettre à jour les variables locales
+                categories = ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"];
+                nextProductId = 1;
+                nextPresetId = 1;
+                
+                // Créer quelques préréglages par défaut
+                const defaultPresets = [
+                    { name: 'Filet de poulet', category: 'Viande', quantity: '1 kg', shelfLife: 48 },
+                    { name: 'Saumon frais', category: 'Poisson', quantity: '500 g', shelfLife: 36 },
+                    { name: 'Lait entier', category: 'Produits laitiers', quantity: '1 L', shelfLife: 72 },
+                    { name: 'Tomates', category: 'Légumes', quantity: '500 g', shelfLife: 72 },
+                    { name: 'Pommes', category: 'Fruits', quantity: '1 kg', shelfLife: 240 }
+                ];
+                
+                // Ajouter les préréglages par défaut
+                for (const preset of defaultPresets) {
+                    const presetId = `preset_${nextPresetId}`;
+                    await presetsCollection.doc(presetId).set({
+                        id: nextPresetId,
+                        name: preset.name,
+                        category: preset.category,
+                        quantity: preset.quantity,
+                        shelfLife: preset.shelfLife,
+                        userId: currentUser.uid
+                    });
+                    nextPresetId++;
+                }
+                
+                // Mettre à jour le compteur dans les paramètres
+                await settingsCollection.doc(currentUser.uid).update({
+                    nextPresetId: nextPresetId
+                });
+                
+                // Charger les données
+                await loadDataFromFirebase();
+                hideLoader();
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation des données utilisateur :", error);
+                hideLoader();
+                showNotification("Erreur lors de l'initialisation des données");
+            }
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -415,7 +1496,7 @@
             font-size: 1.2rem;
             user-select: none;
         }
-        
+
         .storage-indicator {
             position: fixed;
             bottom: 1rem;
@@ -428,11 +1509,11 @@
             opacity: 0;
             transition: opacity 0.3s;
         }
-        
+
         .storage-indicator.show {
             opacity: 1;
         }
-        
+
         /* Style pour le spinner de chargement */
         .loader {
             border: 4px solid rgba(0, 0, 0, 0.1);
@@ -444,19 +1525,43 @@
             margin: 20px auto;
             display: none;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .user-info {
             color: white;
             margin-right: 1rem;
             font-size: 0.9rem;
         }
+        
+        /* Nouveau style pour le minuteur */
+        .countdown {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        .countdown-warning {
+            color: var(--warning);
+            font-weight: bold;
+        }
+        
+        .countdown-expired {
+            color: var(--danger);
+            font-weight: bold;
+        }
+        
+        /* Style pour la cellule de temps restant */
+        .time-remaining {
+            white-space: nowrap;
+            font-size: 0.9rem;
+        }
     </style>
-    
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -476,7 +1581,7 @@
 
     <div class="main-container">
         <div id="loader" class="loader"></div>
-        
+
         <div class="stats">
             <div class="stat-card">
                 <h3>TOTAL PRODUITS</h3>
@@ -540,7 +1645,7 @@
                 <div class="content-header">
                     <h2>Produits en stock</h2>
                     <div>
-                        <button class="btn" id="scannerBtn">Scanner code-barres</button>
+                        <!-- Bouton scanner retiré -->
                     </div>
                 </div>
 
@@ -551,6 +1656,7 @@
                             <th>Catégorie</th>
                             <th>Quantité</th>
                             <th>Date de péremption</th>
+                            <th>Temps restant</th>
                             <th>État</th>
                             <th>Actions</th>
                         </tr>
@@ -689,7 +1795,7 @@
                     <button type="submit" class="btn btn-primary">Se connecter</button>
                 </div>
             </form>
-            
+
             <form id="registerForm" style="display: none;">
                 <div class="form-group">
                     <label for="regEmail">Email</label>
@@ -713,7 +1819,7 @@
 
     <!-- Notification -->
     <div id="notification" class="notification">Produit ajouté avec succès !</div>
-    
+
     <!-- Indicateur de sauvegarde -->
     <div id="storageIndicator" class="storage-indicator">Données sauvegardées</div>
 
@@ -732,16 +1838,16 @@
 
         // Initialiser Firebase
         firebase.initializeApp(firebaseConfig);
-        
+
         // Références aux services Firebase
         const db = firebase.firestore();
         const auth = firebase.auth();
-        
+
         // Référence aux collections Firestore
         const productsCollection = db.collection('products');
         const presetsCollection = db.collection('presets');
         const settingsCollection = db.collection('settings');
-        
+
         // État de connexion utilisateur
         let currentUser = null;
     </script>
@@ -754,7 +1860,8 @@
         let categories = [];
         let nextProductId = 1;
         let nextPresetId = 1;
-        
+        let countdownInterval = null; // Interval pour mettre à jour les minuteurs
+
         let currentProductId = null;
         let currentPresetId = null;
         let currentCategory = null;
@@ -782,7 +1889,6 @@
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         const deleteModalText = document.getElementById('deleteModalText');
         const closeButtons = document.querySelectorAll('.close');
-        const scannerBtn = document.getElementById('scannerBtn');
         const tabButtons = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
         const newCategoryInput = document.getElementById('newCategoryInput');
@@ -790,7 +1896,7 @@
         const exportBtn = document.getElementById('exportBtn');
         const loader = document.getElementById('loader');
         const userInfo = document.getElementById('userInfo');
-        
+
         // Authentification
         const loginForm = document.getElementById('loginForm');
         const registerForm = document.getElementById('registerForm');
@@ -828,10 +1934,10 @@
         // Soumettre le formulaire de connexion
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            
+
             try {
                 showLoader();
                 const userCredential = await auth.signInWithEmailAndPassword(email, password);
@@ -848,16 +1954,16 @@
         // Soumettre le formulaire d'inscription
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
             const confirmPassword = document.getElementById('regPasswordConfirm').value;
-            
+
             if (password !== confirmPassword) {
                 showNotification('Les mots de passe ne correspondent pas !');
                 return;
             }
-            
+
             try {
                 showLoader();
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -878,11 +1984,6 @@
             auth.signOut()
                 .then(() => {
                     currentUser = null;
-                    showNotification('Déconnexion réussie !');
-                    // Effacer les données en mémoire
-                    products = [];
-                    presetFoods = [];
-currentUser = null;
                     showNotification('Déconnexion réussie !');
                     // Effacer les données en mémoire
                     products = [];
@@ -908,1059 +2009,64 @@ currentUser = null;
                 });
         }
 
-        // Ajouter un bouton de déconnexion dans la navigation
-        function addLogoutButton() {
-            const nav = document.querySelector('nav');
-            
-            // Vérifier si le bouton existe déjà
-            if (!document.getElementById('logoutBtn')) {
-                const logoutBtn = document.createElement('button');
-                logoutBtn.id = 'logoutBtn';
-                logoutBtn.className = 'btn';
-                logoutBtn.textContent = 'Déconnexion';
-                logoutBtn.addEventListener('click', signOut);
-                
-                nav.appendChild(logoutBtn);
-            }
-            
-            // Mettre à jour l'info utilisateur
-            if (currentUser && currentUser.email) {
-                userInfo.textContent = currentUser.email;
-            }
-        }
-
-        // Observer les changements d'état d'authentification
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                // Utilisateur connecté
-                currentUser = user;
-                addLogoutButton();
-                loadDataFromFirebase();
-            } else {
-                // Utilisateur déconnecté
-                currentUser = null;
-                showAuthModal();
-            }
-        });
-
-        // Initialiser les données par défaut pour un nouvel utilisateur
-        async function initializeUserData() {
-            if (!currentUser) return;
-            
-            try {
-                showLoader();
-                // Créer un document de configuration avec l'ID de l'utilisateur
-                await settingsCollection.doc(currentUser.uid).set({
-                    categories: ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"],
-                    nextProductId: 1,
-                    nextPresetId: 1
-                });
-                
-                // Mettre à jour les variables locales
-                categories = ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"];
-                nextProductId = 1;
-                nextPresetId = 1;
-                
-                // Créer quelques préréglages par défaut
-                const defaultPresets = [
-                    { name: 'Filet de poulet', category: 'Viande', quantity: '1 kg', shelfLife: 48 },
-                    { name: 'Saumon frais', category: 'Poisson', quantity: '500 g', shelfLife: 36 },
-                    { name: 'Lait entier', category: 'Produits laitiers', quantity: '1 L', shelfLife: 72 },
-                    { name: 'Tomates', category: 'Légumes', quantity: '500 g', shelfLife: 72 },
-                    { name: 'Pommes', category: 'Fruits', quantity: '1 kg', shelfLife: 240 }
-                ];
-                
-                // Ajouter les préréglages par défaut
-                for (const preset of defaultPresets) {
-                    const presetId = `preset_${nextPresetId}`;
-                    await presetsCollection.doc(presetId).set({
-                        id: nextPresetId,
-                        name: preset.name,
-                        category: preset.category,
-                        quantity: preset.quantity,
-                        shelfLife: preset.shelfLife,
-                        userId: currentUser.uid
-                    });
-                    nextPresetId++;
-                }
-                
-                // Mettre à jour le compteur dans les paramètres
-                await settingsCollection.doc(currentUser.uid).update({
-                    nextPresetId: nextPresetId
-                });
-                
-                // Charger les données
-                await loadDataFromFirebase();
-                hideLoader();
-            } catch (error) {
-                console.error("Erreur lors de l'initialisation des données utilisateur :", error);
-                hideLoader();
-                showNotification("Erreur lors de l'initialisation des données");
-            }
-        }
-        
-        // Fonctions de chargement/sauvegarde Firebase
-        async function loadDataFromFirebase() {
-            if (!currentUser) return;
-            
-            try {
-                showLoader();
-                
-                // Charger les configurations (catégories et compteurs)
-                const settingsDoc = await settingsCollection.doc(currentUser.uid).get();
-                if (settingsDoc.exists) {
-                    const settingsData = settingsDoc.data();
-                    categories = settingsData.categories || [];
-                    nextProductId = settingsData.nextProductId || 1;
-                    nextPresetId = settingsData.nextPresetId || 1;
-                }
-                
-                // Charger les produits
-                const productSnapshot = await productsCollection
-                    .where('userId', '==', currentUser.uid)
-                    .get();
-                    
-                products = [];
-                productSnapshot.forEach(doc => {
-                    products.push(doc.data());
-                });
-                
-                // Charger les aliments préenregistrés
-                const presetSnapshot = await presetsCollection
-                    .where('userId', '==', currentUser.uid)
-                    .get();
-                    
-                presetFoods = [];
-                presetSnapshot.forEach(doc => {
-                    presetFoods.push(doc.data());
-                });
-                
-                // Mettre à jour l'interface
-                updateProductsTable();
-                updatePresetsDisplay();
-                updateCategoryOptions(document.getElementById('productCategory'));
-                updateCategoryOptions(document.getElementById('presetCategory'));
-                
-                hideLoader();
-                showStorageIndicator('Données chargées avec succès');
-            } catch (error) {
-                console.error("Erreur lors du chargement des données :", error);
-                hideLoader();
-                showNotification('Erreur lors du chargement des données !');
-            }
-        }
-
-        // Enregistrer les données dans Firebase
-        async function saveToFirebase() {
-            if (!currentUser) return;
-            
-            try {
-                showStorageIndicator('Synchronisation en cours...');
-                
-                // Mettre à jour les paramètres
-                await settingsCollection.doc(currentUser.uid).set({
-                    categories: categories,
-                    nextProductId: nextProductId,
-                    nextPresetId: nextPresetId
-                });
-                
-                // Mettre à jour/ajouter les produits
-                const batch = db.batch();
-                
-                // Obtenir les ID existants pour savoir lesquels supprimer après
-                const productSnapshot = await productsCollection
-                    .where('userId', '==', currentUser.uid)
-                    .get();
-                    
-                const existingProductIds = new Set();
-                productSnapshot.forEach(doc => {
-                    existingProductIds.add(doc.id);
-                });
-                
-                // Préparer les mises à jour et nouvelles entrées
-                for (const product of products) {
-                    const productId = `product_${product.id}`;
-                    const productRef = productsCollection.doc(productId);
-                    batch.set(productRef, {
-                        ...product,
-                        userId: currentUser.uid
-                    });
-                    existingProductIds.delete(productId);
-                }
-                
-                // Supprimer les produits qui n'existent plus
-                for (const oldId of existingProductIds) {
-                    if (oldId.startsWith('product_')) {
-                        batch.delete(productsCollection.doc(oldId));
-                    }
-                }
-                
-                // Exécuter le premier batch (produits)
-                await batch.commit();
-                
-                // Préparer un nouveau batch pour les presets
-                const batchPresets = db.batch();
-                
-                // Obtenir les ID de presets existants
-                const presetSnapshot = await presetsCollection
-                    .where('userId', '==', currentUser.uid)
-                    .get();
-                    
-                const existingPresetIds = new Set();
-                presetSnapshot.forEach(doc => {
-                    existingPresetIds.add(doc.id);
-                });
-                
-                // Préparer les mises à jour et nouvelles entrées pour les presets
-                for (const preset of presetFoods) {
-                    const presetId = `preset_${preset.id}`;
-                    const presetRef = presetsCollection.doc(presetId);
-                    batchPresets.set(presetRef, {
-                        ...preset,
-                        userId: currentUser.uid
-                    });
-                    existingPresetIds.delete(presetId);
-                }
-                
-                // Supprimer les presets qui n'existent plus
-                for (const oldId of existingPresetIds) {
-                    if (oldId.startsWith('preset_')) {
-                        batchPresets.delete(presetsCollection.doc(oldId));
-                    }
-                }
-                
-                // Exécuter le deuxième batch (presets)
-                await batchPresets.commit();
-                
-                showStorageIndicator('Données synchronisées !');
-                return true;
-            } catch (error) {
-                console.error("Erreur lors de la sauvegarde des données :", error);
-                showStorageIndicator('Erreur de synchronisation !', true);
-                return false;
-            }
-        }
-        
-        // Afficher/masquer le spinner de chargement
-        function showLoader() {
-            loader.style.display = 'block';
-        }
-        
-        function hideLoader() {
-            loader.style.display = 'none';
-        }
-
-        // Remplacer la fonction showStorageIndicator pour indiquer la synchronisation
-        function showStorageIndicator(message, isError = false) {
-            storageIndicator.textContent = message;
-            storageIndicator.classList.add('show');
-            
-            if (isError) {
-                storageIndicator.style.backgroundColor = 'rgba(231, 76, 60, 0.9)';
-            } else {
-                storageIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-            }
-            
-            setTimeout(() => {
-                storageIndicator.classList.remove('show');
-            }, 2000);
-        }
-
-        // Fonction pour exporter les données
-        function exportData() {
-            if (!currentUser) {
-                showNotification('Veuillez vous connecter pour exporter les données.');
-                return;
-            }
-            
-            const data = {
-                products: products,
-                presetFoods: presetFoods,
-                categories: categories
-            };
-            
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", `freshtrack_export_${currentUser.uid}.json`);
-            document.body.appendChild(downloadAnchorNode);
-            downloadAnchorNode.click();
-            downloadAnchorNode.remove();
-        }
-        
-        // Fonctions CRUD pour les produits
-        function addProduct(name, category, quantity, shelfLife) {
-            const expiration = calculateExpirationDateTime(shelfLife);
-            
-            const newProduct = {
-                id: nextProductId++,
-                name,
-                category,
-                quantity,
-                expirationDate: expiration.date,
-                expirationTime: expiration.time,
-                status: 'ok'
-            };
-            
-            products.push(newProduct);
-            updateProductsTable();
-            saveToFirebase();
-            
-            return newProduct;
-        }
-
-        // Modifier la fonction pour mettre à jour un produit
-        function updateProduct(productId, updatedData) {
-            const productIndex = products.findIndex(p => p.id === productId);
-            
-            if (productIndex !== -1) {
-                products[productIndex] = {
-                    ...products[productIndex],
-                    ...updatedData
-                };
-                
-                updateProductsTable();
-                saveToFirebase();
-                return true;
-            }
-            
-            return false;
-        }
-
-        // Modifier la fonction pour supprimer un produit
-        function deleteProduct(productId) {
-            const productIndex = products.findIndex(p => p.id === productId);
-            
-            if (productIndex !== -1) {
-                products.splice(productIndex, 1);
-                updateProductsTable();
-                saveToFirebase();
-                return true;
-            }
-            
-            return false;
-        }
-
-        // Modifier la fonction pour ajouter un preset
-        function addPreset(name, category, quantity, shelfLife) {
-            const newPreset = {
-                id: nextPresetId++,
-                name,
-                category,
-                quantity,
-                shelfLife
-            };
-            
-            presetFoods.push(newPreset);
-            updatePresetsDisplay();
-            saveToFirebase();
-            
-            return newPreset;
-        }
-
-        // Modifier la fonction pour mettre à jour un preset
-        function updatePreset(presetId, updatedData) {
-            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
-            
-            if (presetIndex !== -1) {
-                presetFoods[presetIndex] = {
-                    ...presetFoods[presetIndex],
-                    ...updatedData
-                };
-                
-                updatePresetsDisplay();
-                saveToFirebase();
-                return true;
-            }
-            
-            return false;
-        }
-// Modifier la fonction pour supprimer un preset
-        function deletePreset(presetId) {
-            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
-            
-            if (presetIndex !== -1) {
-                presetFoods.splice(presetIndex, 1);
-                updatePresetsDisplay();
-                saveToFirebase();
-                return true;
-            }
-            
-            return false;
-        }
-
-        // Modifier la fonction pour ajouter/modifier/supprimer une catégorie
-        function updateCategories(action, oldCategory, newCategory) {
-            if (action === 'add' && newCategory) {
-                categories.push(newCategory);
-            } else if (action === 'update' && oldCategory && newCategory) {
-                const index = categories.indexOf(oldCategory);
-                if (index !== -1) {
-                    categories[index] = newCategory;
-                    
-                    // Mettre à jour la catégorie dans les aliments préenregistrés
-                    presetFoods.forEach(preset => {
-                        if (preset.category === oldCategory) {
-                            preset.category = newCategory;
-                        }
-                    });
-                    
-                    // Mettre à jour la catégorie dans les produits
-                    products.forEach(product => {
-                        if (product.category === oldCategory) {
-                            product.category = newCategory;
-                        }
-                    });
-                }
-            } else if (action === 'delete' && oldCategory) {
-                const index = categories.indexOf(oldCategory);
-                if (index !== -1) {
-                    categories.splice(index, 1);
-                    
-                    // Supprimer les aliments préenregistrés de cette catégorie
-                    presetFoods = presetFoods.filter(p => p.category !== oldCategory);
-                }
-            }
-            
-            updatePresetsDisplay();
-            updateProductsTable();
-            updateCategoryOptions(document.getElementById('productCategory'));
-            updateCategoryOptions(document.getElementById('presetCategory'));
-            saveToFirebase();
-        }
-
-        // Fonctions
-        function openProductModal(isEdit = false, productId = null) {
-            modalTitle.textContent = isEdit ? 'Modifier le produit' : 'Ajouter un produit';
-            currentProductId = productId;
-
-            // Mettre à jour les options de catégories
-            updateCategoryOptions(document.getElementById('productCategory'));
-
-            if (isEdit && productId) {
-                const product = products.find(p => p.id === productId);
-                if (product) {
-                    document.getElementById('productName').value = product.name;
-                    document.getElementById('productCategory').value = product.category;
-                    document.getElementById('productQuantity').value = product.quantity;
-
-                    // Calculer la durée restante en heures
-                    const now = new Date();
-                    const expiration = new Date(`${product.expirationDate}T${product.expirationTime}`);
-                    const diffHours = Math.round((expiration - now) / (1000 * 60 * 60));
-
-                    document.getElementById('customShelfLife').value = diffHours > 0 ? diffHours : 1;
-                }
-            } else {
-                productForm.reset();
-                document.getElementById('customShelfLife').value = 24; // Valeur par défaut : 24 heures
-            }
-
-            productModal.style.display = 'block';
-        }
-
-        function closeProductModal() {
-            productModal.style.display = 'none';
-            productForm.reset();
-            currentProductId = null;
-        }
-
-        function openPresetModal(isEdit = false, presetId = null) {
-            presetModalTitle.textContent = isEdit ? 'Modifier l\'aliment préenregistré' : 'Ajouter un aliment préenregistré';
-            document.getElementById('savePresetBtn').textContent = isEdit ? 'Enregistrer' : 'Ajouter';
-            currentPresetId = presetId;
-
-            // Mettre à jour les options de catégories
-            updateCategoryOptions(document.getElementById('presetCategory'));
-
-            if (isEdit && presetId) {
-                const preset = presetFoods.find(p => p.id === presetId);
-                if (preset) {
-                    document.getElementById('presetId').value = preset.id;
-                    document.getElementById('presetName').value = preset.name;
-                    document.getElementById('presetCategory').value = preset.category;
-                    document.getElementById('presetQuantity').value = preset.quantity;
-                    document.getElementById('presetShelfLife').value = preset.shelfLife;
-                }
-            } else {
-                presetForm.reset();
-                document.getElementById('presetId').value = '';
-                document.getElementById('presetShelfLife').value = 24; // Valeur par défaut : 24 heures
-            }
-
-            presetModal.style.display = 'block';
-        }
-
-        function closePresetModal() {
-            presetModal.style.display = 'none';
-            presetForm.reset();
-            currentPresetId = null;
-        }
-
-        function openCategoryModal(category = null) {
-            categoryModalTitle.textContent = category ? 'Modifier une catégorie' : 'Ajouter une catégorie';
-            currentCategory = category;
-
-            if (category) {
-                document.getElementById('oldCategoryName').value = category;
-                document.getElementById('categoryName').value = category;
-            } else {
-                categoryForm.reset();
-                document.getElementById('oldCategoryName').value = '';
-            }
-
-            categoryModal.style.display = 'block';
-        }
-
-        function closeCategoryModal() {
-            categoryModal.style.display = 'none';
-            categoryForm.reset();
-            currentCategory = null;
-        }
-
-        function openDeleteModal(type, id, name) {
-            confirmDeleteBtn.setAttribute('data-type', type);
-
-            if (type === 'product') {
-                confirmDeleteBtn.setAttribute('data-id', id);
-                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer le produit "${name}" ?`;
-            } else if (type === 'preset') {
-                confirmDeleteBtn.setAttribute('data-id', id);
-                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer l'aliment préenregistré "${name}" ?`;
-            } else if (type === 'category') {
-                confirmDeleteBtn.setAttribute('data-category', name);
-                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer la catégorie "${name}" et tous ses aliments ?`;
-            }
-
-            deleteModal.style.display = 'block';
-        }
-
-        function closeDeleteModal() {
-            deleteModal.style.display = 'none';
-            confirmDeleteBtn.removeAttribute('data-id');
-            confirmDeleteBtn.removeAttribute('data-category');
-        }
-
-        function showNotification(message) {
-            notification.textContent = message;
-            notification.style.display = 'block';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-
-        function getStatusClass(status) {
-            switch(status) {
-                case 'ok': return 'status-ok';
-                case 'warning': return 'status-warning';
-                case 'expired': return 'status-expired';
-                default: return 'status-ok';
-            }
-        }
-
-        function getStatusText(status) {
-            switch(status) {
-                case 'ok': return 'Consommable';
-                case 'warning': return 'Bientôt périmé';
-                case 'expired': return 'Périmé';
-                default: return 'Consommable';
-            }
-        }
-
-        function determineStatus(expirationDate, expirationTime) {
-            const now = new Date();
-            const expiration = new Date(`${expirationDate}T${expirationTime}`);
-
-            // Calcul de la différence en heures
-            const diffHours = (expiration - now) / (1000 * 60 * 60);
-
+        // Formater le temps restant
+        function formatTimeRemaining(diffHours) {
             if (diffHours < 0) {
-                return 'expired';
-            } else if (diffHours < 24) {
-                return 'warning';
+                return "Expiré";
+            }
+            
+            const days = Math.floor(diffHours / 24);
+            const hours = Math.floor(diffHours % 24);
+            const minutes = Math.floor((diffHours * 60) % 60);
+            
+            if (days > 0) {
+                return `${days}j ${hours}h`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}min`;
             } else {
-                return 'ok';
+                return `${minutes}min`;
             }
         }
-
-        function formatDateTime(date, time) {
-            const [year, month, day] = date.split('-');
-            return `${day}/${month}/${year} ${time}`;
+        
+        // Déterminer la classe CSS pour le temps restant
+        function getTimeRemainingClass(diffHours) {
+            if (diffHours < 0) {
+                return 'countdown-expired';
+            } else if (diffHours < 3) { // Modification: Alerte à 3 heures restantes
+                return 'countdown-warning';
+            } else {
+                return '';
+            }
         }
-
-        function calculateExpirationDateTime(shelfLifeHours) {
+        
+        // Mettre à jour tous les minuteurs
+        function updateAllCountdowns() {
             const now = new Date();
-            const expiration = new Date(now.getTime() + shelfLifeHours * 60 * 60 * 1000);
-
-            const year = expiration.getFullYear();
-            const month = String(expiration.getMonth() + 1).padStart(2, '0');
-            const day = String(expiration.getDate()).padStart(2, '0');
-            const hours = String(expiration.getHours()).padStart(2, '0');
-            const minutes = String(expiration.getMinutes()).padStart(2, '0');
-
-            return {
-                date: `${year}-${month}-${day}`,
-                time: `${hours}:${minutes}`
-            };
-        }
-
-        // Mettre à jour les options de catégories dans les sélecteurs
-        function updateCategoryOptions(selectElement) {
-            // Sauvegarder la valeur actuelle
-            const currentValue = selectElement.value;
-
-            // Vider les options existantes
-            selectElement.innerHTML = '';
-
-            // Ajouter les nouvelles options
-            categories.forEach(category => {
-                const option = document.createElement('option');
-                option.value = category;
-                option.textContent = category;
-                selectElement.appendChild(option);
-            });
-
-            // Restaurer la valeur si elle existe dans les nouvelles options
-            if (categories.includes(currentValue)) {
-                selectElement.value = currentValue;
-            }
-        }
-
-        function updateProductsTable() {
-            const tbody = document.getElementById('productsTable');
-            tbody.innerHTML = '';
-
-            let sortedProducts = [...products];
-
-            // Appliquer le tri
-            switch(sortBy.value) {
-                case 'expiration':
-                    sortedProducts.sort((a, b) => {
-                        const dateA = new Date(`${a.expirationDate}T${a.expirationTime}`);
-                        const dateB = new Date(`${b.expirationDate}T${b.expirationTime}`);
-                        return dateA - dateB;
-                    });
-                    break;
-                case 'name':
-                    sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
-                    break;
-                case 'category':
-                    sortedProducts.sort((a, b) => a.category.localeCompare(b.category));
-                    break;
-                case 'quantity':
-                    sortedProducts.sort((a, b) => a.quantity.localeCompare(b.quantity));
-                    break;
-            }
-
-            // Mettre à jour le tableau
-            sortedProducts.forEach(product => {
-                // Vérifier le statut actuel basé sur la date et l'heure
-                product.status = determineStatus(product.expirationDate, product.expirationTime);
-
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${product.name}</td>
-                    <td>${product.category}</td>
-                    <td>${product.quantity}</td>
-                    <td>${formatDateTime(product.expirationDate, product.expirationTime)}</td>
-                    <td><span class="status ${getStatusClass(product.status)}">${getStatusText(product.status)}</span></td>
-                    <td class="actions">
-                        <button class="btn btn-primary edit-btn" data-id="${product.id}">Modifier</button>
-                        <button class="btn btn-danger delete-btn" data-id="${product.id}" data-name="${product.name}">Supprimer</button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            // Mettre à jour les statistiques
-            document.querySelector('.stats .stat-card:nth-child(1) .value').textContent = products.length;
-            document.querySelector('.stats .stat-card:nth-child(2) .value').textContent = products.filter(p => p.status === 'warning').length;
-            document.querySelector('.stats .stat-card:nth-child(3) .value').textContent = products.filter(p => p.status === 'expired').length;
-            document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
-
-            // Ajouter les événements aux boutons
-            document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const productId = parseInt(this.getAttribute('data-id'));
-                    openProductModal(true, productId);
-                });
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const productId = parseInt(this.getAttribute('data-id'));
-                    const productName = this.getAttribute('data-name');
-                    openDeleteModal('product', productId, productName);
-                });
-            });
-        }
-// Fonction pour mettre à jour l'affichage des aliments préenregistrés
-        function updatePresetsDisplay() {
-            const presetsContainer = document.getElementById('presetsContainer');
-            presetsContainer.innerHTML = '';
-
-            // Regrouper par catégorie
-            let presetsByCategory = {};
-            presetFoods.forEach(preset => {
-                if (!presetsByCategory[preset.category]) {
-                    presetsByCategory[preset.category] = [];
-                }
-                presetsByCategory[preset.category].push(preset);
-            });
-
-            // Générer le HTML pour chaque catégorie
-            for (const category in presetsByCategory) {
-                // Trier les aliments par ordre alphabétique pour cette catégorie
-                presetsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+            
+            products.forEach(product => {
+                const expiration = new Date(`${product.expirationDate}T${product.expirationTime}`);
+                const diffHours = (expiration - now) / (1000 * 60 * 60);
                 
-                const categoryDiv = document.createElement('div');
-                categoryDiv.innerHTML = `
-                    <h4 class="category-header">
-                        ${category}
-                        <div class="category-controls">
-                            <span class="emoji-btn edit-category-btn" data-category="${category}">✏️</span>
-                            <span class="emoji-btn delete-category-btn" data-category="${category}">🗑️</span>
-                        </div>
-                    </h4>
-                    <div class="preset-foods" data-category="${category}"></div>
-                `;
-
-                const presetFoodsContainer = categoryDiv.querySelector('.preset-foods');
-
-                presetsByCategory[category].forEach(preset => {
-                    const presetItem = document.createElement('div');
-                    presetItem.className = 'preset-food-item';
-                    presetItem.setAttribute('data-id', preset.id);
-                    presetItem.setAttribute('data-name', preset.name);
-                    presetItem.setAttribute('data-category', preset.category);
-                    presetItem.setAttribute('data-quantity', preset.quantity);
-                    presetItem.setAttribute('data-shelf-life', preset.shelfLife);
-
-                    presetItem.innerHTML = `
-                        <div class="emoji-controls">
-                            <span class="emoji-btn edit-preset-btn">✏️</span>
-                            <span class="emoji-btn delete-preset-btn">🗑️</span>
-                        </div>
-                        ${preset.name}
-                    `;
-
-                    presetFoodsContainer.appendChild(presetItem);
-                });
-
-                presetsContainer.appendChild(categoryDiv);
-            }
-
-            // Ajouter les événements
-            addPresetEventListeners();
-        }
-
-        // Fonction pour ajouter les événements aux aliments pré
-// Fonction pour ajouter les événements aux aliments préenregistrés
-        function addPresetEventListeners() {
-            // Clic sur l'aliment pour l'ajouter au stock
-            document.querySelectorAll('.preset-food-item').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    // Ne pas exécuter si on a cliqué sur un bouton
-                    if (e.target.closest('.emoji-controls')) {
-                        return;
-                    }
-
-                    const preset = {
-                        id: parseInt(this.getAttribute('data-id')),
-                        name: this.getAttribute('data-name'),
-                        category: this.getAttribute('data-category'),
-                        quantity: this.getAttribute('data-quantity'),
-                        shelfLife: parseInt(this.getAttribute('data-shelf-life'))
-                    };
-
-                    addPresetFoodToStock(preset);
-                });
-            });
-
-            // Boutons de modification des aliments préenregistrés
-            document.querySelectorAll('.edit-preset-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Empêcher l'ajout au stock
-                    const presetItem = this.closest('.preset-food-item');
-                    const presetId = parseInt(presetItem.getAttribute('data-id'));
-                    openPresetModal(true, presetId);
-                });
-            });
-
-            // Boutons de suppression des aliments préenregistrés
-            document.querySelectorAll('.delete-preset-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation(); // Empêcher l'ajout au stock
-                    const presetItem = this.closest('.preset-food-item');
-                    const presetId = parseInt(presetItem.getAttribute('data-id'));
-                    const presetName = presetItem.getAttribute('data-name');
-                    openDeleteModal('preset', presetId, presetName);
-                });
-            });
-
-            // Boutons de modification de catégorie
-            document.querySelectorAll('.edit-category-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const category = this.getAttribute('data-category');
-                    openCategoryModal(category);
-                });
-            });
-
-            // Boutons de suppression de catégorie
-            document.querySelectorAll('.delete-category-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const category = this.getAttribute('data-category');
-                    openDeleteModal('category', null, category);
-                });
-            });
-        }
-
-        // Fonction pour ajouter un aliment préenregistré au stock
-        function addPresetFoodToStock(preset) {
-            const expiration = calculateExpirationDateTime(preset.shelfLife);
-
-            const newProduct = {
-                id: nextProductId++,
-                name: preset.name,
-                category: preset.category,
-                quantity: preset.quantity,
-                expirationDate: expiration.date,
-                expirationTime: expiration.time,
-                status: 'ok'
-            };
-
-            products.push(newProduct);
-            updateProductsTable();
-            showNotification(`${preset.name} ajouté au stock !`);
-            saveToFirebase();
-        }
-        
-        // Événements
-
-        // Soumission du formulaire d'ajout/modification de produit
-        productForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const name = document.getElementById('productName').value;
-            const category = document.getElementById('productCategory').value;
-            const quantity = document.getElementById('productQuantity').value;
-            const shelfLife = parseInt(document.getElementById('customShelfLife').value);
-
-            if (currentProductId) {
-                // Mode édition
-                const expiration = calculateExpirationDateTime(shelfLife);
-                updateProduct(currentProductId, {
-                    name,
-                    category,
-                    quantity,
-                    expirationDate: expiration.date,
-                    expirationTime: expiration.time
-                });
-                showNotification('Produit modifié avec succès !');
-            } else {
-                // Mode ajout
-                addProduct(name, category, quantity, shelfLife);
-                showNotification('Produit ajouté avec succès !');
-            }
-
-            closeProductModal();
-        });
-
-        // Soumission du formulaire d'ajout/modification d'aliment préenregistré
-        presetForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const name = document.getElementById('presetName').value;
-            const category = document.getElementById('presetCategory').value;
-            const quantity = document.getElementById('presetQuantity').value;
-            const shelfLife = parseInt(document.getElementById('presetShelfLife').value);
-
-            if (currentPresetId) {
-                // Mode édition
-                updatePreset(currentPresetId, {
-                    name,
-                    category,
-                    quantity,
-                    shelfLife
-                });
-                showNotification('Aliment préenregistré modifié avec succès !');
-            } else {
-                // Mode ajout
-                addPreset(name, category, quantity, shelfLife);
-                showNotification('Aliment préenregistré ajouté !');
-            }
-
-            closePresetModal();
-        });
-
-        // Soumission du formulaire de modification de catégorie
-        categoryForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const oldCategoryName = document.getElementById('oldCategoryName').value;
-            const newCategoryName = document.getElementById('categoryName').value;
-
-            if (oldCategoryName && newCategoryName && oldCategoryName !== newCategoryName) {
-                // Vérifier si la nouvelle catégorie existe déjà
-                if (categories.includes(newCategoryName)) {
-                    showNotification('Cette catégorie existe déjà !');
-                    return;
-                }
-
-                updateCategories('update', oldCategoryName, newCategoryName);
-                showNotification('Catégorie modifiée avec succès !');
-            }
-
-            closeCategoryModal();
-        });
-
-        // Ajout de nouvelle catégorie
-        addCategoryBtn.addEventListener('click', function() {
-            const newCategory = newCategoryInput.value.trim();
-
-            if (newCategory) {
-                // Vérifier si la catégorie existe déjà
-                if (categories.includes(newCategory)) {
-                    showNotification('Cette catégorie existe déjà !');
+                // Mise à jour du statut en fonction du temps restant
+                if (diffHours < 0) {
+                    product.status = 'expired';
+                } else if (diffHours < 3) { // Modification: Alerte à 3 heures restantes
+                    product.status = 'warning';
                 } else {
-                    // Ajouter la nouvelle catégorie
-                    updateCategories('add', null, newCategory);
-                    newCategoryInput.value = '';
-                    showNotification('Catégorie ajoutée avec succès !');
+                    product.status = 'ok';
                 }
-            }
-        });
-
-        // Confirmation de suppression
-        confirmDeleteBtn.addEventListener('click', function() {
-            const type = this.getAttribute('data-type');
-
-            if (type === 'product') {
-                // Suppression d'un produit
-                const id = parseInt(this.getAttribute('data-id'));
-                deleteProduct(id);
-                showNotification('Produit supprimé avec succès !');
-            } else if (type === 'preset') {
-                // Suppression d'un aliment préenregistré
-                const id = parseInt(this.getAttribute('data-id'));
-                deletePreset(id);
-                showNotification('Aliment préenregistré supprimé avec succès !');
-            } else if (type === 'category') {
-                // Suppression d'une catégorie
-                const categoryName = this.getAttribute('data-category');
-                updateCategories('delete', categoryName, null);
-                showNotification('Catégorie supprimée avec succès !');
-            }
-
-            closeDeleteModal();
-        });
-        
-        // Bouton d'exportation des données
-        exportBtn.addEventListener('click', function() {
-            exportData();
-        });
-
-        // Événements de boutons d'ajout
-        addProductBtn.addEventListener('click', () => openProductModal());
-        addPresetBtn.addEventListener('click', () => openPresetModal());
-
-        // Événements de boutons d'annulation
-        cancelBtn.addEventListener('click', closeProductModal);
-        cancelPresetBtn.addEventListener('click', closePresetModal);
-        cancelCategoryBtn.addEventListener('click', closeCategoryModal);
-        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-
-        // Fermeture des modales avec le X
-        closeButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const modal = this.closest('.modal');
-                if (modal === productModal) closeProductModal();
-                else if (modal === presetModal) closePresetModal();
-                else if (modal === categoryModal) closeCategoryModal();
-                else if (modal === deleteModal) closeDeleteModal();
-                else if (modal === authModal) {
-                    // Ne pas fermer le modal d'authentification si l'utilisateur n'est pas connecté
-                    if (currentUser) {
-                        closeAuthModal();
-                    }
+                
+                // Mettre à jour l'affichage du minuteur si l'élément existe
+                const countdownElement = document.getElementById(`countdown-${product.id}`);
+                if (countdownElement) {
+                    countdownElement.textContent = formatTimeRemaining(diffHours);
+                    countdownElement.className = `time-remaining ${getTimeRemainingClass(diffHours)}`;
                 }
-            });
-        });
-
-        // Événement de changement d'onglet
-        tabButtons.forEach(tab => {
-            tab.addEventListener('click', function() {
-                // Supprimer la classe active de tous les onglets
-                tabButtons.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(t => t.classList.remove('active'));
-
-                // Ajouter la classe active à l'onglet cliqué
-                this.classList.add('active');
-
-                // Afficher le contenu correspondant
-                const tabId = this.getAttribute('data-tab');
-                if (tabId === 'presets') {
-                    document.getElementById('presets-tab').classList.add('active');
-                } else if (tabId === 'manual') {
-                    document.getElementById('manual-tab').classList.add('active');
-                }
-            });
-        });
-
-        // Événement de changement de tri
-        sortBy.addEventListener('change', updateProductsTable);
-
-        // Ajouter une synchronisation automatique périodique (toutes les 5 minutes)
-        setInterval(() => {
-            if (currentUser) {
-                saveToFirebase();
-            }
-        }, 5 * 60 * 1000);
-
-        // Initialisation
-        document.addEventListener('DOMContentLoaded', function() {
-            // L'authentification s'occupe de charger les données
-            // Voir auth.onAuthStateChanged plus haut
-            
-            // Gestion des erreurs et logging
-            window.addEventListener('error', function(e) {
-                console.error('Erreur globale:', e.message);
-                showNotification('Une erreur est survenue: ' + e.message);
-                return false;
             });
             
-            // Vérification périodique de l'état de connexion
-            setInterval(() => {
-                if (navigator.onLine && currentUser) {
-                    const lastSyncTime = localStorage.getItem('lastSyncTime') || 0;
-                    const now = Date.now();
-                    
-                    // Si la dernière synchronisation date de plus de 10 minutes
-                    if (now - lastSyncTime > 10 * 60 * 1000) {
-                        saveToFirebase().then(() => {
-                            localStorage.setItem('lastSyncTime', now);
-                        });
-                    }
-                }
-            }, 60 * 1000); // Vérifie chaque minute
-        });
-        
-        // Gestion des événements hors ligne/en ligne
-        window.addEventListener('online', () => {
-            if (currentUser) {
-                showNotification('Connexion rétablie. Synchronisation...');
-                saveToFirebase();
-            }
-        });
-        
-        window.addEventListener('offline', () => {
-            showNotification('Vous êtes hors ligne. Les modifications seront synchronisées lors de la reconnexion.');
-        });
-        
-        // Vérifier l'état initial de la connexion
-        if (!navigator.onLine) {
-            showNotification('Vous êtes hors ligne. Mode local activé.');
+            // Mettre à jour les statistiques
+            document.querySelector('.stats .stat-card:nth-child(2) .value').textContent = 
+                products.filter(p => p.status === 'warning').length;
+            document.querySelector('.stats .stat-card:nth-child(3) .value').textContent = 
+                products.filter(p => p.status === 'expired').length;
         }
-    </script>
-</body>
-</html>
