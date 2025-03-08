@@ -415,13 +415,30 @@
             font-size: 1.2rem;
             user-select: none;
         }
+        
+        .storage-indicator {
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .storage-indicator.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="logo">FreshTrack</div>
         <nav>
-            <button class="btn">Exporter</button>
+            <button class="btn" id="exportBtn">Exporter</button>
             <button class="btn">Historique</button>
             <button class="btn">Admin</button>
         </nav>
@@ -621,6 +638,9 @@
 
     <!-- Notification -->
     <div id="notification" class="notification">Produit ajouté avec succès !</div>
+    
+    <!-- Indicateur de sauvegarde -->
+    <div id="storageIndicator" class="storage-indicator">Données sauvegardées</div>
 
     <script>
         // Variables globales
@@ -686,9 +706,91 @@
         const tabButtons = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
         const newCategoryInput = document.getElementById('newCategoryInput');
+        const storageIndicator = document.getElementById('storageIndicator');
+        const exportBtn = document.getElementById('exportBtn');
 
         // Tri
         const sortBy = document.getElementById('sortBy');
+
+        // LocalStorage Functions
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem('freshtrack_products', JSON.stringify(products));
+                localStorage.setItem('freshtrack_presets', JSON.stringify(presetFoods));
+                localStorage.setItem('freshtrack_categories', JSON.stringify(categories));
+                localStorage.setItem('freshtrack_nextProductId', nextProductId);
+                localStorage.setItem('freshtrack_nextPresetId', nextPresetId);
+                
+                // Afficher l'indicateur de sauvegarde
+                showStorageIndicator();
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur lors de la sauvegarde des données :", error);
+                return false;
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                // Charger les produits
+                const savedProducts = localStorage.getItem('freshtrack_products');
+                if (savedProducts) {
+                    products = JSON.parse(savedProducts);
+                }
+
+                // Charger les aliments préenregistrés
+                const savedPresets = localStorage.getItem('freshtrack_presets');
+                if (savedPresets) {
+                    presetFoods = JSON.parse(savedPresets);
+                }
+
+                // Charger les catégories
+                const savedCategories = localStorage.getItem('freshtrack_categories');
+                if (savedCategories) {
+                    categories = JSON.parse(savedCategories);
+                }
+
+                // Charger les compteurs d'ID
+                const savedNextProductId = localStorage.getItem('freshtrack_nextProductId');
+                if (savedNextProductId) {
+                    nextProductId = parseInt(savedNextProductId);
+                }
+
+                const savedNextPresetId = localStorage.getItem('freshtrack_nextPresetId');
+                if (savedNextPresetId) {
+                    nextPresetId = parseInt(savedNextPresetId);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error("Erreur lors du chargement des données :", error);
+                return false;
+            }
+        }
+        
+        function showStorageIndicator() {
+            storageIndicator.classList.add('show');
+            setTimeout(() => {
+                storageIndicator.classList.remove('show');
+            }, 2000);
+        }
+        
+        function exportData() {
+            const data = {
+                products: products,
+                presetFoods: presetFoods,
+                categories: categories
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "freshtrack_export.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
 
         // Fonctions
         function openProductModal(isEdit = false, productId = null) {
@@ -954,6 +1056,9 @@
                     openDeleteModal('product', productId, productName);
                 });
             });
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
         }
 
         // Fonction pour mettre à jour l'affichage des aliments préenregistrés
@@ -972,6 +1077,9 @@
 
             // Générer le HTML pour chaque catégorie
             for (const category in presetsByCategory) {
+                // Trier les aliments par ordre alphabétique pour cette catégorie
+                presetsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+                
                 const categoryDiv = document.createElement('div');
                 categoryDiv.innerHTML = `
                     <h4 class="category-header">
@@ -1011,6 +1119,9 @@
 
             // Ajouter les événements
             addPresetEventListeners();
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
         }
 
         // Fonction pour ajouter les événements aux aliments préenregistrés
@@ -1090,6 +1201,9 @@
             products.push(newProduct);
             updateProductsTable();
             showNotification(`${preset.name} ajouté au stock !`);
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
         }
 
         // Événements
@@ -1137,6 +1251,9 @@
 
             closeProductModal();
             updateProductsTable();
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
         });
 
         // Soumission du formulaire d'ajout/modification d'aliment préenregistré
@@ -1177,6 +1294,9 @@
 
             closePresetModal();
             updatePresetsDisplay();
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
         });
 
         // Soumission du formulaire de modification de catégorie
@@ -1216,6 +1336,9 @@
                 showNotification('Catégorie modifiée avec succès !');
                 updatePresetsDisplay();
                 updateProductsTable();
+                
+                // Sauvegarder les données
+                saveToLocalStorage();
             }
 
             closeCategoryModal();
@@ -1239,6 +1362,9 @@
 
                     // Mettre à jour les statistiques
                     document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
+                    
+                    // Sauvegarder les données
+                    saveToLocalStorage();
                 }
             }
         });
@@ -1286,6 +1412,14 @@
             }
 
             closeDeleteModal();
+            
+            // Sauvegarder les données
+            saveToLocalStorage();
+        });
+        
+        // Bouton d'exportation des données
+        exportBtn.addEventListener('click', function() {
+            exportData();
         });
 
         // Événements de boutons d'ajout
@@ -1334,6 +1468,9 @@
 
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
+            // Charger les données depuis le localStorage
+            loadFromLocalStorage();
+            
             updateProductsTable();
             updatePresetsDisplay();
 
