@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreshTrack - Gestion des DLC</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #2ecc71;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        nav {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sidebar {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--secondary);
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+        }
+
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-full {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .filter-section {
+            margin-bottom: 1rem;
+        }
+
+        .filter-section h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-group {
+            margin-bottom: 0.5rem;
+        }
+
+        .filter-group label {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .filter-group select, .filter-group input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .content {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background-color: #f8f9fa;
+        }
+
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .status-ok {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-expired {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 1.5rem;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .close {
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background-color: var(--success);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: none;
+        }
+
+        .preset-foods {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .preset-food-item {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .preset-food-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .emoji-controls {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 14px;
+            display: flex;
+            gap: 5px;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .preset-food-item:hover .emoji-controls {
+            opacity: 1;
+        }
+
+        .emoji-btn {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .category-header {
+            margin: 1rem 0 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #ddd;
+            font-size: 1rem;
+            color: var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 0 4px 4px 4px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .category-controls {
+            display: flex;
+            gap: 8px;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+
+        .category-header:hover .category-controls {
+            opacity: 1;
+        }
+
+        .add-category-container {
+            display: flex;
+            align-items: center;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            gap: 0.5rem;
+        }
+
+        .add-category-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .add-category-btn {
+            cursor: pointer;
+            font-size: 1.2rem;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">FreshTrack</div>
+        <nav>
+            <button class="btn">Exporter</button>
+            <button class="btn">Historique</button>
+            <button class="btn">Admin</button>
+        </nav>
+    </header>
+
+    <div class="main-container">
+        <div class="stats">
+            <div class="stat-card">
+                <h3>TOTAL PRODUITS</h3>
+                <div class="value">5</div>
+            </div>
+            <div class="stat-card">
+                <h3>BIENTÔT PÉRIMÉS</h3>
+                <div class="value" style="color: var(--warning);">1</div>
+            </div>
+            <div class="stat-card">
+                <h3>PÉRIMÉS</h3>
+                <div class="value" style="color: var(--danger);">1</div>
+            </div>
+            <div class="stat-card">
+                <h3>CATÉGORIES</h3>
+                <div class="value">6</div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="sidebar">
+                <div class="tabs">
+                    <div class="tab active" data-tab="presets">Aliments préenregistrés</div>
+                    <div class="tab" data-tab="manual">Ajout manuel</div>
+                </div>
+
+                <div class="tab-content active" id="presets-tab">
+                    <h3>Aliments par catégorie</h3>
+
+                    <div id="presetsContainer">
+                        <!-- Le contenu sera généré dynamiquement -->
+                    </div>
+
+                    <div class="add-category-container">
+                        <input type="text" id="newCategoryInput" class="add-category-input" placeholder="Nom de la catégorie...">
+                        <span class="add-category-btn" id="addCategoryBtn">➕</span>
+                    </div>
+
+                    <button id="addPresetBtn" class="btn btn-success btn-full">+ Ajouter aliment préenregistré</button>
+                </div>
+
+                <div class="tab-content" id="manual-tab">
+                    <button id="addProductBtn" class="btn btn-success btn-full">+ Ajouter un produit</button>
+
+                    <div class="filter-section">
+                        <h3>Tri</h3>
+                        <div class="filter-group">
+                            <label for="sortBy">Trier par</label>
+                            <select id="sortBy" class="form-control">
+                                <option value="expiration">Date d'expiration</option>
+                                <option value="name">Nom</option>
+                                <option value="category">Catégorie</option>
+                                <option value="quantity">Quantité</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="content-header">
+                    <h2>Produits en stock</h2>
+                    <div>
+                        <button class="btn" id="scannerBtn">Scanner code-barres</button>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Catégorie</th>
+                            <th>Quantité</th>
+                            <th>Date de péremption</th>
+                            <th>État</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTable">
+                        <!-- Le tableau sera rempli dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal d'ajout/modification de produit -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un produit</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="productForm">
+                <div class="form-group">
+                    <label for="productName">Nom du produit</label>
+                    <input type="text" id="productName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory">Catégorie</label>
+                    <select id="productCategory" class="form-control" required>
+                        <!-- Les options seront générées dynamiquement -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="productQuantity">Quantité</label>
+                    <input type="text" id="productQuantity" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="customShelfLife">Durée de conservation (heures)</label>
+                    <input type="number" id="customShelfLife" class="form-control" min="1" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancelBtn">Annuler</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal d'ajout/modification d'aliment préenregistré -->
+    <div id="presetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="presetModalTitle">Ajouter un aliment préenregistré</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="presetForm">
+                <input type="hidden" id="presetId" value="">
+                <div class="form-group">
+                    <label for="presetName">Nom de l'aliment</label>
+                    <input type="text" id="presetName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="presetCategory">Catégorie</label>
+                    <select id="presetCategory" class="form-control" required>
+                        <!-- Les options seront générées dynamiquement -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="presetQuantity">Quantité par défaut</label>
+                    <input type="text" id="presetQuantity" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="presetShelfLife">Durée de conservation (heures)</label>
+                    <input type="number" id="presetShelfLife" class="form-control" min="1" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancelPresetBtn">Annuler</button>
+                    <button type="submit" class="btn btn-success" id="savePresetBtn">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de modification de catégorie -->
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="categoryModalTitle">Modifier une catégorie</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="categoryForm">
+                <input type="hidden" id="oldCategoryName" value="">
+                <div class="form-group">
+                    <label for="categoryName">Nom de la catégorie</label>
+                    <input type="text" id="categoryName" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="cancelCategoryBtn">Annuler</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation de suppression -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Confirmer la suppression</h2>
+                <span class="close">&times;</span>
+            </div>
+            <p id="deleteModalText">Êtes-vous sûr de vouloir supprimer ce produit ?</p>
+            <div class="modal-footer">
+                <button class="btn" id="cancelDeleteBtn">Annuler</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn" data-type="product">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification">Produit ajouté avec succès !</div>
+
+    <script>
+        // Variables globales
+        let products = [
+            { id: 1, name: 'Filet de poulet', category: 'Viande', quantity: '5 kg', expirationDate: '2025-03-07', expirationTime: '18:00', status: 'ok' },
+            { id: 2, name: 'Saumon frais', category: 'Poisson', quantity: '2 kg', expirationDate: '2025-03-07', expirationTime: '20:00', status: 'ok' },
+            { id: 3, name: 'Lait entier', category: 'Produits laitiers', quantity: '4 litres', expirationDate: '2025-03-08', expirationTime: '12:00', status: 'warning' },
+            { id: 4, name: 'Crème fraîche', category: 'Produits laitiers', quantity: '1 kg', expirationDate: '2025-03-06', expirationTime: '10:00', status: 'expired' },
+            { id: 5, name: 'Avocat', category: 'Fruits', quantity: '8 pièces', expirationDate: '2025-03-09', expirationTime: '00:00', status: 'ok' }
+        ];
+
+        let presetFoods = [
+            { id: 1, name: 'Filet de poulet', category: 'Viande', quantity: '1 kg', shelfLife: 48 },
+            { id: 2, name: 'Steak haché', category: 'Viande', quantity: '500 g', shelfLife: 24 },
+            { id: 3, name: 'Jambon blanc', category: 'Viande', quantity: '200 g', shelfLife: 72 },
+            { id: 4, name: 'Saumon frais', category: 'Poisson', quantity: '500 g', shelfLife: 36 },
+            { id: 5, name: 'Cabillaud', category: 'Poisson', quantity: '400 g', shelfLife: 24 },
+            { id: 6, name: 'Crevettes', category: 'Poisson', quantity: '300 g', shelfLife: 48 },
+            { id: 7, name: 'Lait entier', category: 'Produits laitiers', quantity: '1 L', shelfLife: 72 },
+            { id: 8, name: 'Crème fraîche', category: 'Produits laitiers', quantity: '200 g', shelfLife: 48 },
+            { id: 9, name: 'Fromage blanc', category: 'Produits laitiers', quantity: '500 g', shelfLife: 96 },
+            { id: 10, name: 'Tomates', category: 'Légumes', quantity: '500 g', shelfLife: 72 },
+            { id: 11, name: 'Salade', category: 'Légumes', quantity: '1 pièce', shelfLife: 48 },
+            { id: 12, name: 'Carottes', category: 'Légumes', quantity: '1 kg', shelfLife: 168 },
+            { id: 13, name: 'Pommes', category: 'Fruits', quantity: '1 kg', shelfLife: 240 },
+            { id: 14, name: 'Bananes', category: 'Fruits', quantity: '500 g', shelfLife: 72 },
+            { id: 15, name: 'Fraises', category: 'Fruits', quantity: '250 g', shelfLife: 48 }
+        ];
+
+        let categories = [
+            "Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"
+        ];
+
+        let currentProductId = null;
+        let currentPresetId = null;
+        let currentCategory = null;
+        let nextProductId = 6; // Pour générer des IDs uniques
+        let nextPresetId = 16;
+
+        // Éléments DOM
+        const productModal = document.getElementById('productModal');
+        const presetModal = document.getElementById('presetModal');
+        const categoryModal = document.getElementById('categoryModal');
+        const deleteModal = document.getElementById('deleteModal');
+        const addProductBtn = document.getElementById('addProductBtn');
+        const addPresetBtn = document.getElementById('addPresetBtn');
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const cancelPresetBtn = document.getElementById('cancelPresetBtn');
+        const cancelCategoryBtn = document.getElementById('cancelCategoryBtn');
+        const productForm = document.getElementById('productForm');
+        const presetForm = document.getElementById('presetForm');
+        const categoryForm = document.getElementById('categoryForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const presetModalTitle = document.getElementById('presetModalTitle');
+        const categoryModalTitle = document.getElementById('categoryModalTitle');
+        const notification = document.getElementById('notification');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const deleteModalText = document.getElementById('deleteModalText');
+        const closeButtons = document.querySelectorAll('.close');
+        const scannerBtn = document.getElementById('scannerBtn');
+        const tabButtons = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const newCategoryInput = document.getElementById('newCategoryInput');
+
+        // Tri
+        const sortBy = document.getElementById('sortBy');
+
+        // Fonctions
+        function openProductModal(isEdit = false, productId = null) {
+            modalTitle.textContent = isEdit ? 'Modifier le produit' : 'Ajouter un produit';
+            currentProductId = productId;
+
+            // Mettre à jour les options de catégories
+            updateCategoryOptions(document.getElementById('productCategory'));
+
+            if (isEdit && productId) {
+                const product = products.find(p => p.id === productId);
+                if (product) {
+                    document.getElementById('productName').value = product.name;
+                    document.getElementById('productCategory').value = product.category;
+                    document.getElementById('productQuantity').value = product.quantity;
+
+                    // Calculer la durée restante en heures
+                    const now = new Date();
+                    const expiration = new Date(`${product.expirationDate}T${product.expirationTime}`);
+                    const diffHours = Math.round((expiration - now) / (1000 * 60 * 60));
+
+                    document.getElementById('customShelfLife').value = diffHours > 0 ? diffHours : 1;
+                }
+            } else {
+                productForm.reset();
+                document.getElementById('customShelfLife').value = 24; // Valeur par défaut : 24 heures
+            }
+
+            productModal.style.display = 'block';
+        }
+
+        function closeProductModal() {
+            productModal.style.display = 'none';
+            productForm.reset();
+            currentProductId = null;
+        }
+
+        function openPresetModal(isEdit = false, presetId = null) {
+            presetModalTitle.textContent = isEdit ? 'Modifier l\'aliment préenregistré' : 'Ajouter un aliment préenregistré';
+            document.getElementById('savePresetBtn').textContent = isEdit ? 'Enregistrer' : 'Ajouter';
+            currentPresetId = presetId;
+
+            // Mettre à jour les options de catégories
+            updateCategoryOptions(document.getElementById('presetCategory'));
+
+            if (isEdit && presetId) {
+                const preset = presetFoods.find(p => p.id === presetId);
+                if (preset) {
+                    document.getElementById('presetId').value = preset.id;
+                    document.getElementById('presetName').value = preset.name;
+                    document.getElementById('presetCategory').value = preset.category;
+                    document.getElementById('presetQuantity').value = preset.quantity;
+                    document.getElementById('presetShelfLife').value = preset.shelfLife;
+                }
+            } else {
+                presetForm.reset();
+                document.getElementById('presetId').value = '';
+                document.getElementById('presetShelfLife').value = 24; // Valeur par défaut : 24 heures
+            }
+
+            presetModal.style.display = 'block';
+        }
+
+        function closePresetModal() {
+            presetModal.style.display = 'none';
+            presetForm.reset();
+            currentPresetId = null;
+        }
+
+        function openCategoryModal(category = null) {
+            categoryModalTitle.textContent = category ? 'Modifier une catégorie' : 'Ajouter une catégorie';
+            currentCategory = category;
+
+            if (category) {
+                document.getElementById('oldCategoryName').value = category;
+                document.getElementById('categoryName').value = category;
+            } else {
+                categoryForm.reset();
+                document.getElementById('oldCategoryName').value = '';
+            }
+
+            categoryModal.style.display = 'block';
+        }
+
+        function closeCategoryModal() {
+            categoryModal.style.display = 'none';
+            categoryForm.reset();
+            currentCategory = null;
+        }
+
+        function openDeleteModal(type, id, name) {
+            confirmDeleteBtn.setAttribute('data-type', type);
+
+            if (type === 'product') {
+                confirmDeleteBtn.setAttribute('data-id', id);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer le produit "${name}" ?`;
+            } else if (type === 'preset') {
+                confirmDeleteBtn.setAttribute('data-id', id);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer l'aliment préenregistré "${name}" ?`;
+            } else if (type === 'category') {
+                confirmDeleteBtn.setAttribute('data-category', name);
+                deleteModalText.textContent = `Êtes-vous sûr de vouloir supprimer la catégorie "${name}" et tous ses aliments ?`;
+            }
+
+            deleteModal.style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            deleteModal.style.display = 'none';
+            confirmDeleteBtn.removeAttribute('data-id');
+            confirmDeleteBtn.removeAttribute('data-category');
+        }
+
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'ok': return 'status-ok';
+                case 'warning': return 'status-warning';
+                case 'expired': return 'status-expired';
+                default: return 'status-ok';
+            }
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'ok': return 'Consommable';
+                case 'warning': return 'Bientôt périmé';
+                case 'expired': return 'Périmé';
+                default: return 'Consommable';
+            }
+        }
+
+        function determineStatus(expirationDate, expirationTime) {
+            const now = new Date();
+            const expiration = new Date(`${expirationDate}T${expirationTime}`);
+
+            // Calcul de la différence en heures
+            const diffHours = (expiration - now) / (1000 * 60 * 60);
+
+            if (diffHours < 0) {
+                return 'expired';
+            } else if (diffHours < 24) {
+                return 'warning';
+            } else {
+                return 'ok';
+            }
+        }
+
+        function formatDateTime(date, time) {
+            const [year, month, day] = date.split('-');
+            return `${day}/${month}/${year} ${time}`;
+        }
+
+        function calculateExpirationDateTime(shelfLifeHours) {
+            const now = new Date();
+            const expiration = new Date(now.getTime() + shelfLifeHours * 60 * 60 * 1000);
+
+            const year = expiration.getFullYear();
+            const month = String(expiration.getMonth() + 1).padStart(2, '0');
+            const day = String(expiration.getDate()).padStart(2, '0');
+            const hours = String(expiration.getHours()).padStart(2, '0');
+            const minutes = String(expiration.getMinutes()).padStart(2, '0');
+
+            return {
+                date: `${year}-${month}-${day}`,
+                time: `${hours}:${minutes}`
+            };
+        }
+
+        // Mettre à jour les options de catégories dans les sélecteurs
+        function updateCategoryOptions(selectElement) {
+            // Sauvegarder la valeur actuelle
+            const currentValue = selectElement.value;
+
+            // Vider les options existantes
+            selectElement.innerHTML = '';
+
+            // Ajouter les nouvelles options
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                selectElement.appendChild(option);
+            });
+
+            // Restaurer la valeur si elle existe dans les nouvelles options
+            if (categories.includes(currentValue)) {
+                selectElement.value = currentValue;
+            }
+        }
+
+        function updateProductsTable() {
+            const tbody = document.getElementById('productsTable');
+            tbody.innerHTML = '';
+
+            let sortedProducts = [...products];
+
+            // Appliquer le tri
+            switch(sortBy.value) {
+                case 'expiration':
+                    sortedProducts.sort((a, b) => {
+                        const dateA = new Date(`${a.expirationDate}T${a.expirationTime}`);
+                        const dateB = new Date(`${b.expirationDate}T${b.expirationTime}`);
+                        return dateA - dateB;
+                    });
+                    break;
+                case 'name':
+                    sortedProducts.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'category':
+                    sortedProducts.sort((a, b) => a.category.localeCompare(b.category));
+                    break;
+                case 'quantity':
+                    sortedProducts.sort((a, b) => a.quantity.localeCompare(b.quantity));
+                    break;
+            }
+
+            // Mettre à jour le tableau
+            sortedProducts.forEach(product => {
+                // Vérifier le statut actuel basé sur la date et l'heure
+                product.status = determineStatus(product.expirationDate, product.expirationTime);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.category}</td>
+                    <td>${product.quantity}</td>
+                    <td>${formatDateTime(product.expirationDate, product.expirationTime)}</td>
+                    <td><span class="status ${getStatusClass(product.status)}">${getStatusText(product.status)}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-primary edit-btn" data-id="${product.id}">Modifier</button>
+                        <button class="btn btn-danger delete-btn" data-id="${product.id}" data-name="${product.name}">Supprimer</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Mettre à jour les statistiques
+            document.querySelector('.stats .stat-card:nth-child(1) .value').textContent = products.length;
+            document.querySelector('.stats .stat-card:nth-child(2) .value').textContent = products.filter(p => p.status === 'warning').length;
+            document.querySelector('.stats .stat-card:nth-child(3) .value').textContent = products.filter(p => p.status === 'expired').length;
+            document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
+
+            // Ajouter les événements aux boutons
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = parseInt(this.getAttribute('data-id'));
+                    openProductModal(true, productId);
+                });
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = parseInt(this.getAttribute('data-id'));
+                    const productName = this.getAttribute('data-name');
+                    openDeleteModal('product', productId, productName);
+                });
+            });
+        }
+
+        // Fonction pour mettre à jour l'affichage des aliments préenregistrés
+        function updatePresetsDisplay() {
+            const presetsContainer = document.getElementById('presetsContainer');
+            presetsContainer.innerHTML = '';
+
+            // Regrouper par catégorie
+            let presetsByCategory = {};
+            presetFoods.forEach(preset => {
+                if (!presetsByCategory[preset.category]) {
+                    presetsByCategory[preset.category] = [];
+                }
+                presetsByCategory[preset.category].push(preset);
+            });
+
+            // Générer le HTML pour chaque catégorie
+            for (const category in presetsByCategory) {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.innerHTML = `
+                    <h4 class="category-header">
+                        ${category}
+                        <div class="category-controls">
+                            <span class="emoji-btn edit-category-btn" data-category="${category}">✏️</span>
+                            <span class="emoji-btn delete-category-btn" data-category="${category}">🗑️</span>
+                        </div>
+                    </h4>
+                    <div class="preset-foods" data-category="${category}"></div>
+                `;
+
+                const presetFoodsContainer = categoryDiv.querySelector('.preset-foods');
+
+                presetsByCategory[category].forEach(preset => {
+                    const presetItem = document.createElement('div');
+                    presetItem.className = 'preset-food-item';
+                    presetItem.setAttribute('data-id', preset.id);
+                    presetItem.setAttribute('data-name', preset.name);
+                    presetItem.setAttribute('data-category', preset.category);
+                    presetItem.setAttribute('data-quantity', preset.quantity);
+                    presetItem.setAttribute('data-shelf-life', preset.shelfLife);
+
+                    presetItem.innerHTML = `
+                        <div class="emoji-controls">
+                            <span class="emoji-btn edit-preset-btn">✏️</span>
+                            <span class="emoji-btn delete-preset-btn">🗑️</span>
+                        </div>
+                        ${preset.name}
+                    `;
+
+                    presetFoodsContainer.appendChild(presetItem);
+                });
+
+                presetsContainer.appendChild(categoryDiv);
+            }
+
+            // Ajouter les événements
+            addPresetEventListeners();
+        }
+
+        // Fonction pour ajouter les événements aux aliments préenregistrés
+        function addPresetEventListeners() {
+            // Clic sur l'aliment pour l'ajouter au stock
+            document.querySelectorAll('.preset-food-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // Ne pas exécuter si on a cliqué sur un bouton
+                    if (e.target.closest('.emoji-controls')) {
+                        return;
+                    }
+
+                    const preset = {
+                        id: parseInt(this.getAttribute('data-id')),
+                        name: this.getAttribute('data-name'),
+                        category: this.getAttribute('data-category'),
+                        quantity: this.getAttribute('data-quantity'),
+                        shelfLife: parseInt(this.getAttribute('data-shelf-life'))
+                    };
+
+                    addPresetFoodToStock(preset);
+                });
+            });
+
+            // Boutons de modification des aliments préenregistrés
+            document.querySelectorAll('.edit-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Empêcher l'ajout au stock
+                    const presetItem = this.closest('.preset-food-item');
+                    const presetId = parseInt(presetItem.getAttribute('data-id'));
+                    openPresetModal(true, presetId);
+                });
+            });
+
+            // Boutons de suppression des aliments préenregistrés
+            document.querySelectorAll('.delete-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Empêcher l'ajout au stock
+                    const presetItem = this.closest('.preset-food-item');
+                    const presetId = parseInt(presetItem.getAttribute('data-id'));
+                    const presetName = presetItem.getAttribute('data-name');
+                    openDeleteModal('preset', presetId, presetName);
+                });
+            });
+
+            // Boutons de modification de catégorie
+            document.querySelectorAll('.edit-category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    openCategoryModal(category);
+                });
+            });
+
+            // Boutons de suppression de catégorie
+            document.querySelectorAll('.delete-category-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const category = this.getAttribute('data-category');
+                    openDeleteModal('category', null, category);
+                });
+            });
+        }
+
+        // Fonction pour ajouter un aliment préenregistré au stock
+        function addPresetFoodToStock(preset) {
+            const expiration = calculateExpirationDateTime(preset.shelfLife);
+
+            const newProduct = {
+                id: nextProductId++,
+                name: preset.name,
+                category: preset.category,
+                quantity: preset.quantity,
+                expirationDate: expiration.date,
+                expirationTime: expiration.time,
+                status: 'ok'
+            };
+
+            products.push(newProduct);
+            updateProductsTable();
+            showNotification(`${preset.name} ajouté au stock !`);
+        }
+
+        // Événements
+
+        // Soumission du formulaire d'ajout/modification de produit
+        productForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('productName').value;
+            const category = document.getElementById('productCategory').value;
+            const quantity = document.getElementById('productQuantity').value;
+            const shelfLife = parseInt(document.getElementById('customShelfLife').value);
+
+            const expiration = calculateExpirationDateTime(shelfLife);
+
+            if (currentProductId) {
+                // Mode édition
+                const productIndex = products.findIndex(p => p.id === currentProductId);
+                if (productIndex !== -1) {
+                    products[productIndex] = {
+                        ...products[productIndex],
+                        name,
+                        category,
+                        quantity,
+                        expirationDate: expiration.date,
+                        expirationTime: expiration.time
+                    };
+                    showNotification('Produit modifié avec succès !');
+                }
+            } else {
+                // Mode ajout
+                const newProduct = {
+                    id: nextProductId++,
+                    name,
+                    category,
+                    quantity,
+                    expirationDate: expiration.date,
+                    expirationTime: expiration.time,
+                    status: 'ok'
+                };
+
+                products.push(newProduct);
+                showNotification('Produit ajouté avec succès !');
+            }
+
+            closeProductModal();
+            updateProductsTable();
+        });
+
+        // Soumission du formulaire d'ajout/modification d'aliment préenregistré
+        presetForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('presetName').value;
+            const category = document.getElementById('presetCategory').value;
+            const quantity = document.getElementById('presetQuantity').value;
+            const shelfLife = parseInt(document.getElementById('presetShelfLife').value);
+
+            if (currentPresetId) {
+                // Mode édition
+                const presetIndex = presetFoods.findIndex(p => p.id === currentPresetId);
+                if (presetIndex !== -1) {
+                    presetFoods[presetIndex] = {
+                        ...presetFoods[presetIndex],
+                        name,
+                        category,
+                        quantity,
+                        shelfLife
+                    };
+                    showNotification('Aliment préenregistré modifié avec succès !');
+                }
+            } else {
+                // Mode ajout
+                const newPreset = {
+                    id: nextPresetId++,
+                    name,
+                    category,
+                    quantity,
+                    shelfLife
+                };
+
+                presetFoods.push(newPreset);
+                showNotification('Aliment préenregistré ajouté !');
+            }
+
+            closePresetModal();
+            updatePresetsDisplay();
+        });
+
+        // Soumission du formulaire de modification de catégorie
+        categoryForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const oldCategoryName = document.getElementById('oldCategoryName').value;
+            const newCategoryName = document.getElementById('categoryName').value;
+
+            if (oldCategoryName && newCategoryName && oldCategoryName !== newCategoryName) {
+                // Vérifier si la nouvelle catégorie existe déjà
+                if (categories.includes(newCategoryName)) {
+                    showNotification('Cette catégorie existe déjà !');
+                    return;
+                }
+
+                // Mettre à jour la catégorie dans la liste
+                const categoryIndex = categories.indexOf(oldCategoryName);
+                if (categoryIndex !== -1) {
+                    categories[categoryIndex] = newCategoryName;
+                }
+
+                // Mettre à jour la catégorie dans les aliments préenregistrés
+                presetFoods.forEach(preset => {
+                    if (preset.category === oldCategoryName) {
+                        preset.category = newCategoryName;
+                    }
+                });
+
+                // Mettre à jour la catégorie dans les produits du stock
+                products.forEach(product => {
+                    if (product.category === oldCategoryName) {
+                        product.category = newCategoryName;
+                    }
+                });
+
+                showNotification('Catégorie modifiée avec succès !');
+                updatePresetsDisplay();
+                updateProductsTable();
+            }
+
+            closeCategoryModal();
+        });
+
+        // Ajout de nouvelle catégorie
+        addCategoryBtn.addEventListener('click', function() {
+            const newCategory = newCategoryInput.value.trim();
+
+            if (newCategory) {
+                // Vérifier si la catégorie existe déjà
+                if (categories.includes(newCategory)) {
+                    showNotification('Cette catégorie existe déjà !');
+                } else {
+                    // Ajouter la nouvelle catégorie
+                    categories.push(newCategory);
+                    newCategoryInput.value = '';
+
+                    showNotification('Catégorie ajoutée avec succès !');
+                    updatePresetsDisplay();
+
+                    // Mettre à jour les statistiques
+                    document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
+                }
+            }
+        });
+
+        // Confirmation de suppression
+        confirmDeleteBtn.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+
+            if (type === 'product') {
+                // Suppression d'un produit
+                const id = parseInt(this.getAttribute('data-id'));
+                const productIndex = products.findIndex(p => p.id === id);
+                if (productIndex !== -1) {
+                    products.splice(productIndex, 1);
+                    updateProductsTable();
+                    showNotification('Produit supprimé avec succès !');
+                }
+            } else if (type === 'preset') {
+                // Suppression d'un aliment préenregistré
+                const id = parseInt(this.getAttribute('data-id'));
+                const presetIndex = presetFoods.findIndex(p => p.id === id);
+                if (presetIndex !== -1) {
+                    presetFoods.splice(presetIndex, 1);
+                    updatePresetsDisplay();
+                    showNotification('Aliment préenregistré supprimé avec succès !');
+                }
+            } else if (type === 'category') {
+                // Suppression d'une catégorie
+                const categoryName = this.getAttribute('data-category');
+
+                // Supprimer la catégorie de la liste
+                const categoryIndex = categories.indexOf(categoryName);
+                if (categoryIndex !== -1) {
+                    categories.splice(categoryIndex, 1);
+
+                    // Supprimer les aliments préenregistrés de cette catégorie
+                    presetFoods = presetFoods.filter(p => p.category !== categoryName);
+
+                    updatePresetsDisplay();
+                    showNotification('Catégorie supprimée avec succès !');
+
+                    // Mettre à jour les statistiques
+                    document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
+                }
+            }
+
+            closeDeleteModal();
+        });
+
+        // Événements de boutons d'ajout
+        addProductBtn.addEventListener('click', () => openProductModal());
+        addPresetBtn.addEventListener('click', () => openPresetModal());
+
+        // Événements de boutons d'annulation
+        cancelBtn.addEventListener('click', closeProductModal);
+        cancelPresetBtn.addEventListener('click', closePresetModal);
+        cancelCategoryBtn.addEventListener('click', closeCategoryModal);
+        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+
+        // Fermeture des modales avec le X
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal === productModal) closeProductModal();
+                else if (modal === presetModal) closePresetModal();
+                else if (modal === categoryModal) closeCategoryModal();
+                else if (modal === deleteModal) closeDeleteModal();
+            });
+        });
+
+        // Événement de changement d'onglet
+        tabButtons.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Supprimer la classe active de tous les onglets
+                tabButtons.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(t => t.classList.remove('active'));
+
+                // Ajouter la classe active à l'onglet cliqué
+                this.classList.add('active');
+
+                // Afficher le contenu correspondant
+                const tabId = this.getAttribute('data-tab');
+                if (tabId === 'presets') {
+                    document.getElementById('presets-tab').classList.add('active');
+                } else if (tabId === 'manual') {
+                    document.getElementById('manual-tab').classList.add('active');
+                }
+            });
+        });
+
+        // Événement de changement de tri
+        sortBy.addEventListener('change', updateProductsTable);
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProductsTable();
+            updatePresetsDisplay();
+
+            // Mettre à jour les options de catégories dans les sélecteurs
+            updateCategoryOptions(document.getElementById('productCategory'));
+            updateCategoryOptions(document.getElementById('presetCategory'));
+        });
+    </script>
+</body>
+</html>
