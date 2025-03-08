@@ -432,35 +432,67 @@
         .storage-indicator.show {
             opacity: 1;
         }
+        
+        /* Style pour le spinner de chargement */
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--secondary);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .user-info {
+            color: white;
+            margin-right: 1rem;
+            font-size: 0.9rem;
+        }
     </style>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 </head>
 <body>
     <header>
         <div class="logo">FreshTrack</div>
+        <div class="user-info" id="userInfo"></div>
         <nav>
             <button class="btn" id="exportBtn">Exporter</button>
             <button class="btn">Historique</button>
             <button class="btn">Admin</button>
+            <!-- Le bouton de déconnexion sera ajouté dynamiquement ici -->
         </nav>
     </header>
 
     <div class="main-container">
+        <div id="loader" class="loader"></div>
+        
         <div class="stats">
             <div class="stat-card">
                 <h3>TOTAL PRODUITS</h3>
-                <div class="value">5</div>
+                <div class="value">0</div>
             </div>
             <div class="stat-card">
                 <h3>BIENTÔT PÉRIMÉS</h3>
-                <div class="value" style="color: var(--warning);">1</div>
+                <div class="value" style="color: var(--warning);">0</div>
             </div>
             <div class="stat-card">
                 <h3>PÉRIMÉS</h3>
-                <div class="value" style="color: var(--danger);">1</div>
+                <div class="value" style="color: var(--danger);">0</div>
             </div>
             <div class="stat-card">
                 <h3>CATÉGORIES</h3>
-                <div class="value">6</div>
+                <div class="value">0</div>
             </div>
         </div>
 
@@ -636,55 +668,103 @@
         </div>
     </div>
 
+    <!-- Modal d'authentification -->
+    <div id="authModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="authModalTitle">Connexion</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" id="switchToRegister">Créer un compte</button>
+                    <button type="submit" class="btn btn-primary">Se connecter</button>
+                </div>
+            </form>
+            
+            <form id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label for="regEmail">Email</label>
+                    <input type="email" id="regEmail" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPassword">Mot de passe</label>
+                    <input type="password" id="regPassword" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="regPasswordConfirm">Confirmer le mot de passe</label>
+                    <input type="password" id="regPasswordConfirm" class="form-control" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" id="switchToLogin">Revenir à la connexion</button>
+                    <button type="submit" class="btn btn-success">Créer un compte</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Notification -->
     <div id="notification" class="notification">Produit ajouté avec succès !</div>
     
     <!-- Indicateur de sauvegarde -->
     <div id="storageIndicator" class="storage-indicator">Données sauvegardées</div>
 
+    <!-- Configuration Firebase -->
+    <script>
+        // Configuration Firebase avec vos informations spécifiques
+        const firebaseConfig = {
+            apiKey: "AIzaSyDORMVVn6xNvb0_4PMxlz5viA1nIMjd6Dc",
+            authDomain: "freshtrack-cd402.firebaseapp.com",
+            projectId: "freshtrack-cd402",
+            storageBucket: "freshtrack-cd402.firebasestorage.app",
+            messagingSenderId: "168535167228",
+            appId: "1:168535167228:web:4ebb6748cb6cd434b50779",
+            measurementId: "G-LXQPY0Y13B"
+        };
+
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Références aux services Firebase
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        
+        // Référence aux collections Firestore
+        const productsCollection = db.collection('products');
+        const presetsCollection = db.collection('presets');
+        const settingsCollection = db.collection('settings');
+        
+        // État de connexion utilisateur
+        let currentUser = null;
+    </script>
+
+    <!-- Script principal de l'application -->
     <script>
         // Variables globales
-        let products = [
-            { id: 1, name: 'Filet de poulet', category: 'Viande', quantity: '5 kg', expirationDate: '2025-03-07', expirationTime: '18:00', status: 'ok' },
-            { id: 2, name: 'Saumon frais', category: 'Poisson', quantity: '2 kg', expirationDate: '2025-03-07', expirationTime: '20:00', status: 'ok' },
-            { id: 3, name: 'Lait entier', category: 'Produits laitiers', quantity: '4 litres', expirationDate: '2025-03-08', expirationTime: '12:00', status: 'warning' },
-            { id: 4, name: 'Crème fraîche', category: 'Produits laitiers', quantity: '1 kg', expirationDate: '2025-03-06', expirationTime: '10:00', status: 'expired' },
-            { id: 5, name: 'Avocat', category: 'Fruits', quantity: '8 pièces', expirationDate: '2025-03-09', expirationTime: '00:00', status: 'ok' }
-        ];
-
-        let presetFoods = [
-            { id: 1, name: 'Filet de poulet', category: 'Viande', quantity: '1 kg', shelfLife: 48 },
-            { id: 2, name: 'Steak haché', category: 'Viande', quantity: '500 g', shelfLife: 24 },
-            { id: 3, name: 'Jambon blanc', category: 'Viande', quantity: '200 g', shelfLife: 72 },
-            { id: 4, name: 'Saumon frais', category: 'Poisson', quantity: '500 g', shelfLife: 36 },
-            { id: 5, name: 'Cabillaud', category: 'Poisson', quantity: '400 g', shelfLife: 24 },
-            { id: 6, name: 'Crevettes', category: 'Poisson', quantity: '300 g', shelfLife: 48 },
-            { id: 7, name: 'Lait entier', category: 'Produits laitiers', quantity: '1 L', shelfLife: 72 },
-            { id: 8, name: 'Crème fraîche', category: 'Produits laitiers', quantity: '200 g', shelfLife: 48 },
-            { id: 9, name: 'Fromage blanc', category: 'Produits laitiers', quantity: '500 g', shelfLife: 96 },
-            { id: 10, name: 'Tomates', category: 'Légumes', quantity: '500 g', shelfLife: 72 },
-            { id: 11, name: 'Salade', category: 'Légumes', quantity: '1 pièce', shelfLife: 48 },
-            { id: 12, name: 'Carottes', category: 'Légumes', quantity: '1 kg', shelfLife: 168 },
-            { id: 13, name: 'Pommes', category: 'Fruits', quantity: '1 kg', shelfLife: 240 },
-            { id: 14, name: 'Bananes', category: 'Fruits', quantity: '500 g', shelfLife: 72 },
-            { id: 15, name: 'Fraises', category: 'Fruits', quantity: '250 g', shelfLife: 48 }
-        ];
-
-        let categories = [
-            "Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"
-        ];
-
+        let products = [];
+        let presetFoods = [];
+        let categories = [];
+        let nextProductId = 1;
+        let nextPresetId = 1;
+        
         let currentProductId = null;
         let currentPresetId = null;
         let currentCategory = null;
-        let nextProductId = 6; // Pour générer des IDs uniques
-        let nextPresetId = 16;
 
         // Éléments DOM
         const productModal = document.getElementById('productModal');
         const presetModal = document.getElementById('presetModal');
         const categoryModal = document.getElementById('categoryModal');
         const deleteModal = document.getElementById('deleteModal');
+        const authModal = document.getElementById('authModal');
         const addProductBtn = document.getElementById('addProductBtn');
         const addPresetBtn = document.getElementById('addPresetBtn');
         const addCategoryBtn = document.getElementById('addCategoryBtn');
@@ -708,75 +788,391 @@
         const newCategoryInput = document.getElementById('newCategoryInput');
         const storageIndicator = document.getElementById('storageIndicator');
         const exportBtn = document.getElementById('exportBtn');
+        const loader = document.getElementById('loader');
+        const userInfo = document.getElementById('userInfo');
+        
+        // Authentification
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const switchToRegister = document.getElementById('switchToRegister');
+        const switchToLogin = document.getElementById('switchToLogin');
 
         // Tri
         const sortBy = document.getElementById('sortBy');
 
-        // LocalStorage Functions
-        function saveToLocalStorage() {
+        // Fonctions d'authentification
+        function showAuthModal() {
+            authModal.style.display = 'block';
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+            document.getElementById('authModalTitle').textContent = 'Connexion';
+        }
+
+        function closeAuthModal() {
+            authModal.style.display = 'none';
+        }
+
+        // Basculer entre les formulaires
+        switchToRegister.addEventListener('click', () => {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+            document.getElementById('authModalTitle').textContent = 'Créer un compte';
+        });
+
+        switchToLogin.addEventListener('click', () => {
+            registerForm.style.display = 'none';
+            loginForm.style.display = 'block';
+            document.getElementById('authModalTitle').textContent = 'Connexion';
+        });
+
+        // Soumettre le formulaire de connexion
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
             try {
-                localStorage.setItem('freshtrack_products', JSON.stringify(products));
-                localStorage.setItem('freshtrack_presets', JSON.stringify(presetFoods));
-                localStorage.setItem('freshtrack_categories', JSON.stringify(categories));
-                localStorage.setItem('freshtrack_nextProductId', nextProductId);
-                localStorage.setItem('freshtrack_nextPresetId', nextPresetId);
-                
-                // Afficher l'indicateur de sauvegarde
-                showStorageIndicator();
-                
-                return true;
+                showLoader();
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                closeAuthModal();
+                showNotification('Connexion réussie !');
+                hideLoader();
             } catch (error) {
-                console.error("Erreur lors de la sauvegarde des données :", error);
-                return false;
+                hideLoader();
+                showNotification('Erreur de connexion : ' + error.message);
+            }
+        });
+
+        // Soumettre le formulaire d'inscription
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regPasswordConfirm').value;
+            
+            if (password !== confirmPassword) {
+                showNotification('Les mots de passe ne correspondent pas !');
+                return;
+            }
+            
+            try {
+                showLoader();
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                closeAuthModal();
+                showNotification('Compte créé avec succès !');
+                // Initialiser les données par défaut pour un nouvel utilisateur
+                await initializeUserData();
+                hideLoader();
+            } catch (error) {
+                hideLoader();
+                showNotification('Erreur lors de la création du compte : ' + error.message);
+            }
+        });
+
+        // Déconnexion
+        function signOut() {
+            auth.signOut()
+                .then(() => {
+                    currentUser = null;
+                    showNotification('Déconnexion réussie !');
+                    // Effacer les données en mémoire
+                    products = [];
+                    presetFoods = [];
+currentUser = null;
+                    showNotification('Déconnexion réussie !');
+                    // Effacer les données en mémoire
+                    products = [];
+                    presetFoods = [];
+                    categories = [];
+                    updateProductsTable();
+                    updatePresetsDisplay();
+                    
+                    // Supprimer le bouton de déconnexion
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    if (logoutBtn) {
+                        logoutBtn.remove();
+                    }
+                    
+                    // Réinitialiser les infos utilisateur
+                    userInfo.textContent = '';
+                    
+                    // Afficher le modal de connexion
+                    showAuthModal();
+                })
+                .catch(error => {
+                    showNotification('Erreur lors de la déconnexion : ' + error.message);
+                });
+        }
+
+        // Ajouter un bouton de déconnexion dans la navigation
+        function addLogoutButton() {
+            const nav = document.querySelector('nav');
+            
+            // Vérifier si le bouton existe déjà
+            if (!document.getElementById('logoutBtn')) {
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logoutBtn';
+                logoutBtn.className = 'btn';
+                logoutBtn.textContent = 'Déconnexion';
+                logoutBtn.addEventListener('click', signOut);
+                
+                nav.appendChild(logoutBtn);
+            }
+            
+            // Mettre à jour l'info utilisateur
+            if (currentUser && currentUser.email) {
+                userInfo.textContent = currentUser.email;
             }
         }
 
-        function loadFromLocalStorage() {
+        // Observer les changements d'état d'authentification
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // Utilisateur connecté
+                currentUser = user;
+                addLogoutButton();
+                loadDataFromFirebase();
+            } else {
+                // Utilisateur déconnecté
+                currentUser = null;
+                showAuthModal();
+            }
+        });
+
+        // Initialiser les données par défaut pour un nouvel utilisateur
+        async function initializeUserData() {
+            if (!currentUser) return;
+            
             try {
-                // Charger les produits
-                const savedProducts = localStorage.getItem('freshtrack_products');
-                if (savedProducts) {
-                    products = JSON.parse(savedProducts);
-                }
-
-                // Charger les aliments préenregistrés
-                const savedPresets = localStorage.getItem('freshtrack_presets');
-                if (savedPresets) {
-                    presetFoods = JSON.parse(savedPresets);
-                }
-
-                // Charger les catégories
-                const savedCategories = localStorage.getItem('freshtrack_categories');
-                if (savedCategories) {
-                    categories = JSON.parse(savedCategories);
-                }
-
-                // Charger les compteurs d'ID
-                const savedNextProductId = localStorage.getItem('freshtrack_nextProductId');
-                if (savedNextProductId) {
-                    nextProductId = parseInt(savedNextProductId);
-                }
-
-                const savedNextPresetId = localStorage.getItem('freshtrack_nextPresetId');
-                if (savedNextPresetId) {
-                    nextPresetId = parseInt(savedNextPresetId);
+                showLoader();
+                // Créer un document de configuration avec l'ID de l'utilisateur
+                await settingsCollection.doc(currentUser.uid).set({
+                    categories: ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"],
+                    nextProductId: 1,
+                    nextPresetId: 1
+                });
+                
+                // Mettre à jour les variables locales
+                categories = ["Viande", "Poisson", "Légumes", "Fruits", "Produits laitiers", "Épicerie"];
+                nextProductId = 1;
+                nextPresetId = 1;
+                
+                // Créer quelques préréglages par défaut
+                const defaultPresets = [
+                    { name: 'Filet de poulet', category: 'Viande', quantity: '1 kg', shelfLife: 48 },
+                    { name: 'Saumon frais', category: 'Poisson', quantity: '500 g', shelfLife: 36 },
+                    { name: 'Lait entier', category: 'Produits laitiers', quantity: '1 L', shelfLife: 72 },
+                    { name: 'Tomates', category: 'Légumes', quantity: '500 g', shelfLife: 72 },
+                    { name: 'Pommes', category: 'Fruits', quantity: '1 kg', shelfLife: 240 }
+                ];
+                
+                // Ajouter les préréglages par défaut
+                for (const preset of defaultPresets) {
+                    const presetId = `preset_${nextPresetId}`;
+                    await presetsCollection.doc(presetId).set({
+                        id: nextPresetId,
+                        name: preset.name,
+                        category: preset.category,
+                        quantity: preset.quantity,
+                        shelfLife: preset.shelfLife,
+                        userId: currentUser.uid
+                    });
+                    nextPresetId++;
                 }
                 
-                return true;
+                // Mettre à jour le compteur dans les paramètres
+                await settingsCollection.doc(currentUser.uid).update({
+                    nextPresetId: nextPresetId
+                });
+                
+                // Charger les données
+                await loadDataFromFirebase();
+                hideLoader();
+            } catch (error) {
+                console.error("Erreur lors de l'initialisation des données utilisateur :", error);
+                hideLoader();
+                showNotification("Erreur lors de l'initialisation des données");
+            }
+        }
+        
+        // Fonctions de chargement/sauvegarde Firebase
+        async function loadDataFromFirebase() {
+            if (!currentUser) return;
+            
+            try {
+                showLoader();
+                
+                // Charger les configurations (catégories et compteurs)
+                const settingsDoc = await settingsCollection.doc(currentUser.uid).get();
+                if (settingsDoc.exists) {
+                    const settingsData = settingsDoc.data();
+                    categories = settingsData.categories || [];
+                    nextProductId = settingsData.nextProductId || 1;
+                    nextPresetId = settingsData.nextPresetId || 1;
+                }
+                
+                // Charger les produits
+                const productSnapshot = await productsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                products = [];
+                productSnapshot.forEach(doc => {
+                    products.push(doc.data());
+                });
+                
+                // Charger les aliments préenregistrés
+                const presetSnapshot = await presetsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                presetFoods = [];
+                presetSnapshot.forEach(doc => {
+                    presetFoods.push(doc.data());
+                });
+                
+                // Mettre à jour l'interface
+                updateProductsTable();
+                updatePresetsDisplay();
+                updateCategoryOptions(document.getElementById('productCategory'));
+                updateCategoryOptions(document.getElementById('presetCategory'));
+                
+                hideLoader();
+                showStorageIndicator('Données chargées avec succès');
             } catch (error) {
                 console.error("Erreur lors du chargement des données :", error);
+                hideLoader();
+                showNotification('Erreur lors du chargement des données !');
+            }
+        }
+
+        // Enregistrer les données dans Firebase
+        async function saveToFirebase() {
+            if (!currentUser) return;
+            
+            try {
+                showStorageIndicator('Synchronisation en cours...');
+                
+                // Mettre à jour les paramètres
+                await settingsCollection.doc(currentUser.uid).set({
+                    categories: categories,
+                    nextProductId: nextProductId,
+                    nextPresetId: nextPresetId
+                });
+                
+                // Mettre à jour/ajouter les produits
+                const batch = db.batch();
+                
+                // Obtenir les ID existants pour savoir lesquels supprimer après
+                const productSnapshot = await productsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                const existingProductIds = new Set();
+                productSnapshot.forEach(doc => {
+                    existingProductIds.add(doc.id);
+                });
+                
+                // Préparer les mises à jour et nouvelles entrées
+                for (const product of products) {
+                    const productId = `product_${product.id}`;
+                    const productRef = productsCollection.doc(productId);
+                    batch.set(productRef, {
+                        ...product,
+                        userId: currentUser.uid
+                    });
+                    existingProductIds.delete(productId);
+                }
+                
+                // Supprimer les produits qui n'existent plus
+                for (const oldId of existingProductIds) {
+                    if (oldId.startsWith('product_')) {
+                        batch.delete(productsCollection.doc(oldId));
+                    }
+                }
+                
+                // Exécuter le premier batch (produits)
+                await batch.commit();
+                
+                // Préparer un nouveau batch pour les presets
+                const batchPresets = db.batch();
+                
+                // Obtenir les ID de presets existants
+                const presetSnapshot = await presetsCollection
+                    .where('userId', '==', currentUser.uid)
+                    .get();
+                    
+                const existingPresetIds = new Set();
+                presetSnapshot.forEach(doc => {
+                    existingPresetIds.add(doc.id);
+                });
+                
+                // Préparer les mises à jour et nouvelles entrées pour les presets
+                for (const preset of presetFoods) {
+                    const presetId = `preset_${preset.id}`;
+                    const presetRef = presetsCollection.doc(presetId);
+                    batchPresets.set(presetRef, {
+                        ...preset,
+                        userId: currentUser.uid
+                    });
+                    existingPresetIds.delete(presetId);
+                }
+                
+                // Supprimer les presets qui n'existent plus
+                for (const oldId of existingPresetIds) {
+                    if (oldId.startsWith('preset_')) {
+                        batchPresets.delete(presetsCollection.doc(oldId));
+                    }
+                }
+                
+                // Exécuter le deuxième batch (presets)
+                await batchPresets.commit();
+                
+                showStorageIndicator('Données synchronisées !');
+                return true;
+            } catch (error) {
+                console.error("Erreur lors de la sauvegarde des données :", error);
+                showStorageIndicator('Erreur de synchronisation !', true);
                 return false;
             }
         }
         
-        function showStorageIndicator() {
+        // Afficher/masquer le spinner de chargement
+        function showLoader() {
+            loader.style.display = 'block';
+        }
+        
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
+
+        // Remplacer la fonction showStorageIndicator pour indiquer la synchronisation
+        function showStorageIndicator(message, isError = false) {
+            storageIndicator.textContent = message;
             storageIndicator.classList.add('show');
+            
+            if (isError) {
+                storageIndicator.style.backgroundColor = 'rgba(231, 76, 60, 0.9)';
+            } else {
+                storageIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            }
+            
             setTimeout(() => {
                 storageIndicator.classList.remove('show');
             }, 2000);
         }
-        
+
+        // Fonction pour exporter les données
         function exportData() {
+            if (!currentUser) {
+                showNotification('Veuillez vous connecter pour exporter les données.');
+                return;
+            }
+            
             const data = {
                 products: products,
                 presetFoods: presetFoods,
@@ -786,10 +1182,151 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "freshtrack_export.json");
+            downloadAnchorNode.setAttribute("download", `freshtrack_export_${currentUser.uid}.json`);
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
+        }
+        
+        // Fonctions CRUD pour les produits
+        function addProduct(name, category, quantity, shelfLife) {
+            const expiration = calculateExpirationDateTime(shelfLife);
+            
+            const newProduct = {
+                id: nextProductId++,
+                name,
+                category,
+                quantity,
+                expirationDate: expiration.date,
+                expirationTime: expiration.time,
+                status: 'ok'
+            };
+            
+            products.push(newProduct);
+            updateProductsTable();
+            saveToFirebase();
+            
+            return newProduct;
+        }
+
+        // Modifier la fonction pour mettre à jour un produit
+        function updateProduct(productId, updatedData) {
+            const productIndex = products.findIndex(p => p.id === productId);
+            
+            if (productIndex !== -1) {
+                products[productIndex] = {
+                    ...products[productIndex],
+                    ...updatedData
+                };
+                
+                updateProductsTable();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour supprimer un produit
+        function deleteProduct(productId) {
+            const productIndex = products.findIndex(p => p.id === productId);
+            
+            if (productIndex !== -1) {
+                products.splice(productIndex, 1);
+                updateProductsTable();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour ajouter un preset
+        function addPreset(name, category, quantity, shelfLife) {
+            const newPreset = {
+                id: nextPresetId++,
+                name,
+                category,
+                quantity,
+                shelfLife
+            };
+            
+            presetFoods.push(newPreset);
+            updatePresetsDisplay();
+            saveToFirebase();
+            
+            return newPreset;
+        }
+
+        // Modifier la fonction pour mettre à jour un preset
+        function updatePreset(presetId, updatedData) {
+            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
+            
+            if (presetIndex !== -1) {
+                presetFoods[presetIndex] = {
+                    ...presetFoods[presetIndex],
+                    ...updatedData
+                };
+                
+                updatePresetsDisplay();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+// Modifier la fonction pour supprimer un preset
+        function deletePreset(presetId) {
+            const presetIndex = presetFoods.findIndex(p => p.id === presetId);
+            
+            if (presetIndex !== -1) {
+                presetFoods.splice(presetIndex, 1);
+                updatePresetsDisplay();
+                saveToFirebase();
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Modifier la fonction pour ajouter/modifier/supprimer une catégorie
+        function updateCategories(action, oldCategory, newCategory) {
+            if (action === 'add' && newCategory) {
+                categories.push(newCategory);
+            } else if (action === 'update' && oldCategory && newCategory) {
+                const index = categories.indexOf(oldCategory);
+                if (index !== -1) {
+                    categories[index] = newCategory;
+                    
+                    // Mettre à jour la catégorie dans les aliments préenregistrés
+                    presetFoods.forEach(preset => {
+                        if (preset.category === oldCategory) {
+                            preset.category = newCategory;
+                        }
+                    });
+                    
+                    // Mettre à jour la catégorie dans les produits
+                    products.forEach(product => {
+                        if (product.category === oldCategory) {
+                            product.category = newCategory;
+                        }
+                    });
+                }
+            } else if (action === 'delete' && oldCategory) {
+                const index = categories.indexOf(oldCategory);
+                if (index !== -1) {
+                    categories.splice(index, 1);
+                    
+                    // Supprimer les aliments préenregistrés de cette catégorie
+                    presetFoods = presetFoods.filter(p => p.category !== oldCategory);
+                }
+            }
+            
+            updatePresetsDisplay();
+            updateProductsTable();
+            updateCategoryOptions(document.getElementById('productCategory'));
+            updateCategoryOptions(document.getElementById('presetCategory'));
+            saveToFirebase();
         }
 
         // Fonctions
@@ -1056,12 +1593,8 @@
                     openDeleteModal('product', productId, productName);
                 });
             });
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
         }
-
-        // Fonction pour mettre à jour l'affichage des aliments préenregistrés
+// Fonction pour mettre à jour l'affichage des aliments préenregistrés
         function updatePresetsDisplay() {
             const presetsContainer = document.getElementById('presetsContainer');
             presetsContainer.innerHTML = '';
@@ -1119,12 +1652,10 @@
 
             // Ajouter les événements
             addPresetEventListeners();
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
         }
 
-        // Fonction pour ajouter les événements aux aliments préenregistrés
+        // Fonction pour ajouter les événements aux aliments pré
+// Fonction pour ajouter les événements aux aliments préenregistrés
         function addPresetEventListeners() {
             // Clic sur l'aliment pour l'ajouter au stock
             document.querySelectorAll('.preset-food-item').forEach(item => {
@@ -1201,11 +1732,9 @@
             products.push(newProduct);
             updateProductsTable();
             showNotification(`${preset.name} ajouté au stock !`);
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
+            saveToFirebase();
         }
-
+        
         // Événements
 
         // Soumission du formulaire d'ajout/modification de produit
@@ -1217,43 +1746,24 @@
             const quantity = document.getElementById('productQuantity').value;
             const shelfLife = parseInt(document.getElementById('customShelfLife').value);
 
-            const expiration = calculateExpirationDateTime(shelfLife);
-
             if (currentProductId) {
                 // Mode édition
-                const productIndex = products.findIndex(p => p.id === currentProductId);
-                if (productIndex !== -1) {
-                    products[productIndex] = {
-                        ...products[productIndex],
-                        name,
-                        category,
-                        quantity,
-                        expirationDate: expiration.date,
-                        expirationTime: expiration.time
-                    };
-                    showNotification('Produit modifié avec succès !');
-                }
-            } else {
-                // Mode ajout
-                const newProduct = {
-                    id: nextProductId++,
+                const expiration = calculateExpirationDateTime(shelfLife);
+                updateProduct(currentProductId, {
                     name,
                     category,
                     quantity,
                     expirationDate: expiration.date,
-                    expirationTime: expiration.time,
-                    status: 'ok'
-                };
-
-                products.push(newProduct);
+                    expirationTime: expiration.time
+                });
+                showNotification('Produit modifié avec succès !');
+            } else {
+                // Mode ajout
+                addProduct(name, category, quantity, shelfLife);
                 showNotification('Produit ajouté avec succès !');
             }
 
             closeProductModal();
-            updateProductsTable();
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
         });
 
         // Soumission du formulaire d'ajout/modification d'aliment préenregistré
@@ -1267,36 +1777,20 @@
 
             if (currentPresetId) {
                 // Mode édition
-                const presetIndex = presetFoods.findIndex(p => p.id === currentPresetId);
-                if (presetIndex !== -1) {
-                    presetFoods[presetIndex] = {
-                        ...presetFoods[presetIndex],
-                        name,
-                        category,
-                        quantity,
-                        shelfLife
-                    };
-                    showNotification('Aliment préenregistré modifié avec succès !');
-                }
-            } else {
-                // Mode ajout
-                const newPreset = {
-                    id: nextPresetId++,
+                updatePreset(currentPresetId, {
                     name,
                     category,
                     quantity,
                     shelfLife
-                };
-
-                presetFoods.push(newPreset);
+                });
+                showNotification('Aliment préenregistré modifié avec succès !');
+            } else {
+                // Mode ajout
+                addPreset(name, category, quantity, shelfLife);
                 showNotification('Aliment préenregistré ajouté !');
             }
 
             closePresetModal();
-            updatePresetsDisplay();
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
         });
 
         // Soumission du formulaire de modification de catégorie
@@ -1313,32 +1807,8 @@
                     return;
                 }
 
-                // Mettre à jour la catégorie dans la liste
-                const categoryIndex = categories.indexOf(oldCategoryName);
-                if (categoryIndex !== -1) {
-                    categories[categoryIndex] = newCategoryName;
-                }
-
-                // Mettre à jour la catégorie dans les aliments préenregistrés
-                presetFoods.forEach(preset => {
-                    if (preset.category === oldCategoryName) {
-                        preset.category = newCategoryName;
-                    }
-                });
-
-                // Mettre à jour la catégorie dans les produits du stock
-                products.forEach(product => {
-                    if (product.category === oldCategoryName) {
-                        product.category = newCategoryName;
-                    }
-                });
-
+                updateCategories('update', oldCategoryName, newCategoryName);
                 showNotification('Catégorie modifiée avec succès !');
-                updatePresetsDisplay();
-                updateProductsTable();
-                
-                // Sauvegarder les données
-                saveToLocalStorage();
             }
 
             closeCategoryModal();
@@ -1354,17 +1824,9 @@
                     showNotification('Cette catégorie existe déjà !');
                 } else {
                     // Ajouter la nouvelle catégorie
-                    categories.push(newCategory);
+                    updateCategories('add', null, newCategory);
                     newCategoryInput.value = '';
-
                     showNotification('Catégorie ajoutée avec succès !');
-                    updatePresetsDisplay();
-
-                    // Mettre à jour les statistiques
-                    document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
-                    
-                    // Sauvegarder les données
-                    saveToLocalStorage();
                 }
             }
         });
@@ -1376,45 +1838,21 @@
             if (type === 'product') {
                 // Suppression d'un produit
                 const id = parseInt(this.getAttribute('data-id'));
-                const productIndex = products.findIndex(p => p.id === id);
-                if (productIndex !== -1) {
-                    products.splice(productIndex, 1);
-                    updateProductsTable();
-                    showNotification('Produit supprimé avec succès !');
-                }
+                deleteProduct(id);
+                showNotification('Produit supprimé avec succès !');
             } else if (type === 'preset') {
                 // Suppression d'un aliment préenregistré
                 const id = parseInt(this.getAttribute('data-id'));
-                const presetIndex = presetFoods.findIndex(p => p.id === id);
-                if (presetIndex !== -1) {
-                    presetFoods.splice(presetIndex, 1);
-                    updatePresetsDisplay();
-                    showNotification('Aliment préenregistré supprimé avec succès !');
-                }
+                deletePreset(id);
+                showNotification('Aliment préenregistré supprimé avec succès !');
             } else if (type === 'category') {
                 // Suppression d'une catégorie
                 const categoryName = this.getAttribute('data-category');
-
-                // Supprimer la catégorie de la liste
-                const categoryIndex = categories.indexOf(categoryName);
-                if (categoryIndex !== -1) {
-                    categories.splice(categoryIndex, 1);
-
-                    // Supprimer les aliments préenregistrés de cette catégorie
-                    presetFoods = presetFoods.filter(p => p.category !== categoryName);
-
-                    updatePresetsDisplay();
-                    showNotification('Catégorie supprimée avec succès !');
-
-                    // Mettre à jour les statistiques
-                    document.querySelector('.stats .stat-card:nth-child(4) .value').textContent = categories.length;
-                }
+                updateCategories('delete', categoryName, null);
+                showNotification('Catégorie supprimée avec succès !');
             }
 
             closeDeleteModal();
-            
-            // Sauvegarder les données
-            saveToLocalStorage();
         });
         
         // Bouton d'exportation des données
@@ -1440,6 +1878,12 @@
                 else if (modal === presetModal) closePresetModal();
                 else if (modal === categoryModal) closeCategoryModal();
                 else if (modal === deleteModal) closeDeleteModal();
+                else if (modal === authModal) {
+                    // Ne pas fermer le modal d'authentification si l'utilisateur n'est pas connecté
+                    if (currentUser) {
+                        closeAuthModal();
+                    }
+                }
             });
         });
 
@@ -1466,18 +1910,57 @@
         // Événement de changement de tri
         sortBy.addEventListener('change', updateProductsTable);
 
+        // Ajouter une synchronisation automatique périodique (toutes les 5 minutes)
+        setInterval(() => {
+            if (currentUser) {
+                saveToFirebase();
+            }
+        }, 5 * 60 * 1000);
+
         // Initialisation
         document.addEventListener('DOMContentLoaded', function() {
-            // Charger les données depuis le localStorage
-            loadFromLocalStorage();
+            // L'authentification s'occupe de charger les données
+            // Voir auth.onAuthStateChanged plus haut
             
-            updateProductsTable();
-            updatePresetsDisplay();
-
-            // Mettre à jour les options de catégories dans les sélecteurs
-            updateCategoryOptions(document.getElementById('productCategory'));
-            updateCategoryOptions(document.getElementById('presetCategory'));
+            // Gestion des erreurs et logging
+            window.addEventListener('error', function(e) {
+                console.error('Erreur globale:', e.message);
+                showNotification('Une erreur est survenue: ' + e.message);
+                return false;
+            });
+            
+            // Vérification périodique de l'état de connexion
+            setInterval(() => {
+                if (navigator.onLine && currentUser) {
+                    const lastSyncTime = localStorage.getItem('lastSyncTime') || 0;
+                    const now = Date.now();
+                    
+                    // Si la dernière synchronisation date de plus de 10 minutes
+                    if (now - lastSyncTime > 10 * 60 * 1000) {
+                        saveToFirebase().then(() => {
+                            localStorage.setItem('lastSyncTime', now);
+                        });
+                    }
+                }
+            }, 60 * 1000); // Vérifie chaque minute
         });
+        
+        // Gestion des événements hors ligne/en ligne
+        window.addEventListener('online', () => {
+            if (currentUser) {
+                showNotification('Connexion rétablie. Synchronisation...');
+                saveToFirebase();
+            }
+        });
+        
+        window.addEventListener('offline', () => {
+            showNotification('Vous êtes hors ligne. Les modifications seront synchronisées lors de la reconnexion.');
+        });
+        
+        // Vérifier l'état initial de la connexion
+        if (!navigator.onLine) {
+            showNotification('Vous êtes hors ligne. Mode local activé.');
+        }
     </script>
 </body>
 </html>
